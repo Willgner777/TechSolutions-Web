@@ -6,7 +6,8 @@ import {
   CheckSquare, DollarSign, ShieldAlert, LogOut, Menu, X 
 } from 'lucide-react';
 
-// Importação das tuas páginas (direto na raiz src/)
+// Importação das páginas (todas na raiz src/)
+import LoginPage from './LoginPage'; // Certifica-te se o ficheiro se chama LoginPage.jsx ou Login.jsx
 import DashboardPage from './DashboardPage';
 import VeiculosPage from './VeiculosPage';
 import MotoristasPage from './MotoristasPage';
@@ -70,14 +71,15 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={!session ? <LoginPagePlaceholder /> : <Navigate to="/dashboard" />} />
+        {/* Aqui usamos a página de login real em vez do placeholder */}
+        <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/dashboard" />} />
         <Route path="/*" element={session ? <AuthenticatedLayout userProfile={userProfile} /> : <Navigate to="/login" />} />
       </Routes>
     </Router>
   );
 }
 
-// Layout com o Menu Lateral Estilo UI/UX Corrigido
+// Layout com o Menu Lateral Estilo UI/UX
 function AuthenticatedLayout({ userProfile }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
@@ -188,7 +190,7 @@ function AuthenticatedLayout({ userProfile }) {
   );
 }
 
-// Componente placeholder caso a página admin dev ainda não exista separada
+// Componente para o Painel Admin Dev
 function AdminDevPage({ userProfile }) {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -196,8 +198,4 @@ function AdminDevPage({ userProfile }) {
       <p className="text-slate-400">Bem-vindo, {userProfile?.nome}. Aqui podes gerir todas as empresas da plataforma WillTech.</p>
     </div>
   );
-}
-
-function LoginPagePlaceholder() {
-  return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Ecrã de Login</div>;
 }
