@@ -1,201 +1,148 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './Admbases';
-import { 
-  LayoutDashboard, Truck, Users, Fuel, Wrench, 
-  CheckSquare, DollarSign, ShieldAlert, LogOut, Menu, X 
-} from 'lucide-react';
+import LoginPage from './LoginPage';
+import AuthenticatedLayout from './AuthenticatedLayout';
 
-// Importação das páginas (todas na raiz src/)
-import LoginPage from './LoginPage'; // Certifica-te se o ficheiro se chama LoginPage.jsx ou Login.jsx
-import DashboardPage from './DashboardPage';
-import VeiculosPage from './VeiculosPage';
-import MotoristasPage from './MotoristasPage';
-import AbastecimentosPage from './AbastecimentosPage';
-import ManutencoesPage from './ManutencoesPage';
-import ChecklistPage from './ChecklistPage';
-import DespesasPage from './DespesasPage';
+// Carrega o perfil e a empresa em consultas separadas (não depende de FK no schema cache).
+async function carregarPerfil(userId) {
+  const { data: perfil, error } = await supabase
+    .from('perfis')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!perfil) return null;
+
+  let empresa = null;
+  if (perfil.empresa_id) {
+    const { data } = await supabase
+      .from('empresas')
+      .select('nome, plano, ativo')
+      .eq('id', perfil.empresa_id)
+      .maybeSingle();
+    empresa = data || null;
+  }
+  return { ...perfil, empresas: empresa };
+}
+
+function TelaCarregando() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-950 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-medium text-purple-200/80">A carregar WillTech Solutions...</p>
+      </div>
+    </div>
+  );
+}
+
+function TelaAcessoBloqueado({ mensagem }) {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center p-6 font-sans">
+      <div className="max-w-md w-full space-y-5 text-center">
+        <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
+          <span className="text-white font-black text-xl tracking-tighter">W</span>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-800">Acesso indisponível</h1>
+        <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">{mensagem}</div>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3.5 px-4 rounded-2xl shadow-lg transition-all text-sm cursor-pointer"
+        >
+          Voltar ao login
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [erroPerfil, setErroPerfil] = useState('');
   const [loading, setLoading] = useState(true);
+  const usuarioCarregado = useRef(null); // id do usuário cujo perfil já está em memória
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-      else setLoading(false);
-    });
+    let ativo = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchUserProfile(session.user.id);
-      else {
+    const aplicarSessao = async (sess) => {
+      if (!ativo) return;
+
+      if (!sess) {
+        usuarioCarregado.current = null;
+        setSession(null);
         setUserProfile(null);
+        setErroPerfil('');
         setLoading(false);
+        return;
       }
+
+      setSession(sess);
+
+      // O Supabase reemite SIGNED_IN ao voltar para a aba: não recarrega a tela à toa.
+      if (usuarioCarregado.current === sess.user.id) return;
+
+      setLoading(true);
+      try {
+        const perfil = await carregarPerfil(sess.user.id);
+        if (!ativo) return;
+        usuarioCarregado.current = sess.user.id;
+        setUserProfile(perfil);
+        setErroPerfil(perfil ? '' : 'Seu usuário não possui um perfil cadastrado. Peça a um administrador para criá-lo.');
+      } catch (err) {
+        if (!ativo) return;
+        setUserProfile(null);
+        setErroPerfil('Não foi possível carregar o seu perfil: ' + err.message);
+      } finally {
+        if (ativo) setLoading(false);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session: sess } }) => aplicarSessao(sess));
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((evento, sess) => {
+      if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') {
+        if (sess) setSession(sess);
+        return;
+      }
+      // Evita chamadas ao Supabase dentro do próprio callback de autenticação.
+      setTimeout(() => aplicarSessao(sess), 0);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      ativo = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchUserProfile = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('perfis')
-        .select('*, empresas(nome, plano, ativo)')
-        .eq('id', userId)
-        .single();
+  if (loading) return <TelaCarregando />;
 
-      if (error) throw error;
-      setUserProfile(data);
-    } catch (err) {
-      console.error('Erro ao carregar perfil:', err.message);
-    } finally {
-      setLoading(false);
+  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
+
+  let conteudoAutenticado = null;
+  if (session) {
+    if (!userProfile) {
+      conteudoAutenticado = <TelaAcessoBloqueado mensagem={erroPerfil || 'Perfil não encontrado.'} />;
+    } else if (userProfile.ativo === false) {
+      conteudoAutenticado = <TelaAcessoBloqueado mensagem="Este usuário está desativado. Fale com o administrador." />;
+    } else if (userProfile.empresa_id && userProfile.empresas?.ativo === false) {
+      conteudoAutenticado = <TelaAcessoBloqueado mensagem="A empresa vinculada a este usuário está desativada." />;
+    } else {
+      conteudoAutenticado = <AuthenticatedLayout userProfile={userProfile} home={home} />;
     }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-400">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-300">A carregar WillTech Solutions...</p>
-        </div>
-      </div>
-    );
   }
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        {/* Aqui usamos a página de login real em vez do placeholder */}
-        <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/dashboard" />} />
-        <Route path="/*" element={session ? <AuthenticatedLayout userProfile={userProfile} /> : <Navigate to="/login" />} />
+        <Route path="/login" element={!session ? <LoginPage /> : <Navigate to={home} replace />} />
+        <Route path="/*" element={session ? conteudoAutenticado : <Navigate to="/login" replace />} />
       </Routes>
     </Router>
-  );
-}
-
-// Layout com o Menu Lateral Estilo UI/UX
-function AuthenticatedLayout({ userProfile }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
-  const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-    { label: 'Veículos', icon: Truck, path: '/veiculos' },
-    { label: 'Motoristas', icon: Users, path: '/motoristas' },
-    { label: 'Abastecimentos', icon: Fuel, path: '/abastecimentos' },
-    { label: 'Manutenções', icon: Wrench, path: '/manutencoes' },
-    { label: 'Checklists', icon: CheckSquare, path: '/checklists' },
-    { label: 'Despesas', icon: DollarSign, path: '/despesas' },
-  ];
-
-  // Se for super_dev, adiciona o link do Painel Admin Dev no menu
-  if (userProfile?.role === 'super_dev') {
-    navItems.push({ label: 'Painel Admin Dev', icon: ShieldAlert, path: '/admin-dev' });
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans selection:bg-purple-500 selection:text-white">
-      {/* Mobile Topbar */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-600 flex items-center justify-center font-bold text-white shadow-lg shadow-purple-900/40">W</div>
-          <span className="font-semibold text-lg tracking-wide">WillTech <span className="text-purple-400">Frotas</span></span>
-        </div>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-slate-400 hover:text-white">
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Sidebar / Menu Lateral */}
-      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-slate-900/90 backdrop-blur-xl border-r border-slate-800 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col`}>
-        <div className="p-6 hidden md:flex items-center gap-3 border-b border-slate-800/60">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-purple-900/50">W</div>
-          <div>
-            <h1 className="font-bold text-base leading-tight">WillTech</h1>
-            <span className="text-xs text-purple-400 font-medium">Gestão Operacional</span>
-          </div>
-        </div>
-
-        <div className="p-4 flex-1 overflow-y-auto space-y-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <button
-                key={item.path}
-                onClick={() => {
-                  navigate(item.path);
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${
-                  isActive 
-                    ? 'bg-purple-600/15 text-purple-400 border border-purple-500/30' 
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                <Icon size={18} className={isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="p-4 border-t border-slate-800/60 bg-slate-950/40">
-          <div className="flex items-center gap-3 mb-3 px-2">
-            <div className="w-9 h-9 rounded-full bg-purple-900/50 border border-purple-500/30 flex items-center justify-center font-bold text-purple-300 text-sm">
-              {userProfile?.nome?.[0] || 'U'}
-            </div>
-            <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate text-slate-200">{userProfile?.nome || 'Utilizador'}</p>
-              <p className="text-xs text-purple-400 truncate">{userProfile?.empresas?.nome || userProfile?.role || 'Empresa'}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition-all"
-          >
-            <LogOut size={16} />
-            <span>Terminar Sessão</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Conteúdo Dinâmico das Páginas */}
-      <main className="flex-1 overflow-y-auto bg-slate-950 p-6 md:p-8">
-        <Routes>
-          <Route path="/dashboard" element={<DashboardPage userProfile={userProfile} />} />
-          <Route path="/veiculos" element={<VeiculosPage userProfile={userProfile} />} />
-          <Route path="/motoristas" element={<MotoristasPage userProfile={userProfile} />} />
-          <Route path="/abastecimentos" element={<AbastecimentosPage userProfile={userProfile} />} />
-          <Route path="/manutencoes" element={<ManutencoesPage userProfile={userProfile} />} />
-          <Route path="/checklists" element={<ChecklistPage userProfile={userProfile} />} />
-          <Route path="/despesas" element={<DespesasPage userProfile={userProfile} />} />
-          <Route path="/admin-dev" element={<AdminDevPage userProfile={userProfile} />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Routes>
-      </main>
-    </div>
-  );
-}
-
-// Componente para o Painel Admin Dev
-function AdminDevPage({ userProfile }) {
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-100">Painel Administrativo Global (Dev)</h1>
-      <p className="text-slate-400">Bem-vindo, {userProfile?.nome}. Aqui podes gerir todas as empresas da plataforma WillTech.</p>
-    </div>
   );
 }

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from './Admbases';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
@@ -10,60 +9,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const navigate = useNavigate();
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMessage('');
 
-    try {
-      // 1. Autenticar no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    // O App detecta a sessão, carrega o perfil e redireciona conforme a role
+    // (super_dev -> /admin-dev, demais -> /dashboard).
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (authError) throw authError;
-
-      // 2. Procurar o perfil do utilizador na tabela perfis usando .maybeSingle()
-      let { data: perfil, error: perfilError } = await supabase
-        .from('perfis')
-        .select('role, empresa_id')
-        .eq('id', authData.user.id)
-        .maybeSingle();
-
-      if (perfilError) throw perfilError;
-
-      // 3. Fallback: Se o perfil ainda não existir na tabela perfis, cria como super_dev
-      if (!perfil) {
-        const { data: novoPerfil, error: createError } = await supabase
-          .from('perfis')
-          .insert([
-            {
-              id: authData.user.id,
-              email: authData.user.email,
-              nome: authData.user.email.split('@')[0],
-              role: 'super_dev',
-              ativo: true,
-            },
-          ])
-          .select('role, empresa_id')
-          .single();
-
-        if (createError) throw createError;
-        perfil = novoPerfil;
-      }
-
-      // 4. Redirecionamento com base na role
-      if (perfil?.role === 'super_dev') {
-        navigate('/admin-dev');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      setErrorMessage(err.message || 'Erro ao realizar login.');
-    } finally {
+    if (error) {
+      setErrorMessage(
+        error.message === 'Invalid login credentials'
+          ? 'E-mail ou senha incorretos.'
+          : error.message || 'Erro ao realizar login.'
+      );
       setLoading(false);
     }
   };
@@ -146,7 +106,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3.5 px-4 rounded-2xl shadow-lg transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-medium py-3.5 px-4 rounded-2xl shadow-lg transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? 'A verificar acesso...' : <><span>Acessar Sistema</span><ArrowRight className="w-5 h-5" /></>}
               </button>
