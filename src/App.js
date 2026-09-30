@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { 
   LayoutDashboard, Truck, Users, Fuel, Wrench, 
@@ -70,20 +70,18 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Se não houver sessão, mostra o login (ou podes manter a tua rota de login atual) */}
         <Route path="/login" element={!session ? <LoginPagePlaceholder /> : <Navigate to="/dashboard" />} />
-        
-        {/* Se houver sessão, carrega o Layout com o Menu Lateral UI/UX */}
         <Route path="/*" element={session ? <AuthenticatedLayout userProfile={userProfile} /> : <Navigate to="/login" />} />
       </Routes>
     </Router>
   );
 }
 
-// Layout com o Menu Lateral Estilo UI/UX
+// Layout com o Menu Lateral Estilo UI/UX Corrigido
 function AuthenticatedLayout({ userProfile }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -99,6 +97,11 @@ function AuthenticatedLayout({ userProfile }) {
     { label: 'Checklists', icon: CheckSquare, path: '/checklists' },
     { label: 'Despesas', icon: DollarSign, path: '/despesas' },
   ];
+
+  // Se for super_dev, adiciona o link do Painel Admin Dev no menu
+  if (userProfile?.role === 'super_dev') {
+    navItems.push({ label: 'Painel Admin Dev', icon: ShieldAlert, path: '/admin-dev' });
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans selection:bg-purple-500 selection:text-white">
@@ -126,16 +129,23 @@ function AuthenticatedLayout({ userProfile }) {
         <div className="p-4 flex-1 overflow-y-auto space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = location.pathname === item.path;
             return (
-              <a
+              <button
                 key={item.path}
-                href={item.path}
-                onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', item.path); window.dispatchEvent(new PopStateEvent('popstate')); setSidebarOpen(false); }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 transition-all group"
+                onClick={() => {
+                  navigate(item.path);
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all group ${
+                  isActive 
+                    ? 'bg-purple-600/15 text-purple-400 border border-purple-500/30' 
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                }`}
               >
-                <Icon size={18} className="text-slate-500 group-hover:text-purple-400 transition-colors" />
+                <Icon size={18} className={isActive ? 'text-purple-400' : 'text-slate-500 group-hover:text-purple-400'} />
                 <span>{item.label}</span>
-              </a>
+              </button>
             );
           })}
         </div>
@@ -147,7 +157,7 @@ function AuthenticatedLayout({ userProfile }) {
             </div>
             <div className="overflow-hidden">
               <p className="text-sm font-medium truncate text-slate-200">{userProfile?.nome || 'Utilizador'}</p>
-              <p className="text-xs text-slate-500 truncate">{userProfile?.empresas?.nome || 'Empresa'}</p>
+              <p className="text-xs text-purple-400 truncate">{userProfile?.empresas?.nome || userProfile?.role || 'Empresa'}</p>
             </div>
           </div>
           <button
@@ -170,6 +180,7 @@ function AuthenticatedLayout({ userProfile }) {
           <Route path="/manutencoes" element={<ManutencoesPage userProfile={userProfile} />} />
           <Route path="/checklists" element={<ChecklistPage userProfile={userProfile} />} />
           <Route path="/despesas" element={<DespesasPage userProfile={userProfile} />} />
+          <Route path="/admin-dev" element={<AdminDevPage userProfile={userProfile} />} />
           <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </main>
@@ -177,7 +188,16 @@ function AuthenticatedLayout({ userProfile }) {
   );
 }
 
-// Componente placeholder caso uses outro ecrã de login
+// Componente placeholder caso a página admin dev ainda não exista separada
+function AdminDevPage({ userProfile }) {
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto">
+      <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-100">Painel Administrativo Global (Dev)</h1>
+      <p className="text-slate-400">Bem-vindo, {userProfile?.nome}. Aqui podes gerir todas as empresas da plataforma WillTech.</p>
+    </div>
+  );
+}
+
 function LoginPagePlaceholder() {
   return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Ecrã de Login</div>;
 }
