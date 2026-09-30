@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from './Admbases';
 import { Fuel, Plus, Trash2, X, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function AbastecimentosPage({ userProfile }) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './Admbases';
 import { 
   Building2, Users, ShieldCheck, Plus, RefreshCw, 
   CheckCircle2, AlertCircle, Database, Edit, Trash2, X

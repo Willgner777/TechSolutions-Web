@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { supabase } from './supabaseClient';
+import { supabase } from './Admbases';
 import { 
   LayoutDashboard, Truck, Users, Fuel, Wrench, 
   CheckSquare, DollarSign, ShieldAlert, LogOut, Menu, X 
