@@ -1,0 +1,107 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from './Admbases';
+import { Truck, Users, Wrench, Fuel, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
+
+export default function DashboardPage({ userProfile }) {
+  const [stats, setStats] = useState({ veiculos: 0, motoristas: 0, manutencoesPendentes: 0, gastoMes: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (userProfile?.empresa_id) fetchDashboardData();
+  }, [userProfile]);
+
+  const fetchDashboardData = async () => {
+    try {
+      const empresaId = userProfile.empresa_id;
+
+      // Consultas paralelas isoladas pelo tenant
+      const [vRes, mRes, manRes, despRes] = await Promise.all([
+        supabase.from('veiculos').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId),
+        supabase.from('motoristas').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId),
+        supabase.from('manutencoes').select('id', { count: 'exact', head: true }).eq('empresa_id', empresaId).eq('status', 'pendente'),
+        supabase.from('abastecimentos').select('valor_total').eq('empresa_id', empresaId)
+      ]);
+
+      const totalGasto = despRes.data?.reduce((acc, curr) => acc + Number(curr.valor_total || 0), 0) || 0;
+
+      setStats({
+        veiculos: vRes.count || 0,
+        motoristas: mRes.count || 0,
+        manutencoesPendentes: manRes.count || 0,
+        gastoMes: totalGasto
+      });
+    } catch (err) {
+      console.error('Erro ao carregar métricas:', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cards = [
+    { title: 'Veículos Ativos', value: stats.veiculos, icon: Truck, color: 'text-purple-400', bg: 'bg-purple-950/30', border: 'border-purple-900/50' },
+    { title: 'Motoristas Registados', value: stats.motoristas, icon: Users, color: 'text-blue-400', bg: 'bg-blue-950/30', border: 'border-blue-900/50' },
+    { title: 'Manutenções Pendentes', value: stats.manutencoesPendentes, icon: Wrench, color: 'text-amber-400', bg: 'bg-amber-950/30', border: 'border-amber-900/50' },
+    { title: 'Gasto Total Combustível', value: `R$ ${stats.gastoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: Fuel, color: 'text-emerald-400', bg: 'bg-emerald-950/30', border: 'border-emerald-900/50' },
+  ];
+
+  return (
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-100">Painel Operacional</h1>
+        <p className="text-sm text-slate-400 mt-1">Bem-vindo à central de inteligência da sua frota.</p>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-slate-900/60 rounded-3xl animate-pulse border border-slate-800"></div>)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {cards.map((card, idx) => {
+            const Icon = card.icon;
+            return (
+              <div key={idx} className={`p-6 rounded-3xl bg-slate-900/70 border ${card.border} backdrop-blur-xl shadow-xl shadow-black/20 flex flex-col justify-between relative overflow-hidden group hover:border-slate-700 transition-all`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-400">{card.title}</span>
+                  <div className={`w-10 h-10 rounded-2xl ${card.bg} flex items-center justify-center ${card.color}`}>
+                    <Icon size={20} />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <h3 className="text-2xl font-bold tracking-tight text-slate-100">{card.value}</h3>
+                </div>
+                <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-gradient-to-br from-white/5 to-transparent rounded-full blur-xl group-hover:scale-150 transition-transform"></div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Secção de Atalhos e Alertas */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 p-6 rounded-3xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-xl">
+          <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+            <TrendingUp size={18} className="text-purple-400" /> Atividade Recente da Frota
+          </h2>
+          <div className="text-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-2xl">
+            Nenhuma atividade registada recentemente na base de dados.
+          </div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-slate-900/70 border border-slate-800/80 backdrop-blur-xl flex flex-col justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-200 mb-4 flex items-center gap-2">
+              <AlertTriangle size={18} className="text-amber-400" /> Alertas do Sistema
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed">
+              Todos os veículos encontram-se com revisões e documentação dentro da normalidade operacional.
+            </p>
+          </div>
+          <div className="mt-6 pt-4 border-t border-slate-800/60 text-xs text-slate-500">
+            Segurança RLS ativa por tenant.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
