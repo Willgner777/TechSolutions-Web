@@ -68,7 +68,7 @@ export default function AdminDevPage() {
 
     } catch (err) {
       setFeedback({ type: 'error', message: 'Erro ao carregar dados: ' + err.message });
-    } fontally {
+    } finally {
       setLoading(false);
     }
   };
