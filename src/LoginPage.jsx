@@ -37,21 +37,71 @@ export default function LoginPage() {
     setErrorMessage('');
 
     try {
-      // O App detecta a sessão, carrega o perfil e redireciona conforme a role
-      // (super_dev -> /admin-dev, demais -> /dashboard).
-      const { error } = await supabase.auth.signInWithPassword({
+      // 1. Autenticação básica via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (error) {
-        setErrorMessage(traduzirErroLogin(error));
+      if (authError) {
+        setErrorMessage(traduzirErroLogin(authError));
         setLoading(false);
+        return;
+      }
+
+      const user = authData?.user;
+
+      if (user) {
+        // 2. Busca o perfil e a empresa vinculada ao usuário logado
+        const { data: perfil, error: perfilError } = await supabase
+          .from('usuarios') // Ajuste o nome da tabela se for 'profiles' ou 'funcionarios'
+          .select('role, empresa_id')
+          .eq('email', user.email)
+          .single();
+
+        if (perfilError) {
+          console.error('Erro ao buscar dados do usuário:', perfilError);
+          // Caso a busca por e-mail falhe, tenta buscar pelo ID de autenticação
+          const { data: perfilById } = await supabase
+            .from('usuarios')
+            .select('role, empresa_id')
+            .eq('id', user.id)
+            .single();
+
+          if (perfilById) {
+            redirecionarUsuario(perfilById);
+            return;
+          }
+        }
+
+        if (perfil) {
+          redirecionarUsuario(perfil);
+        } else {
+          // Se não houver cadastro adicional, redireciona para a rota genérica
+          window.location.href = '/dashboard';
+        }
       }
     } catch (err) {
-      // Falha de rede/exceção: sem isso o botão ficava travado em "A verificar acesso..."
       setErrorMessage(traduzirErroLogin(err));
       setLoading(false);
+    }
+  };
+
+  // Função para direcionar a rota conforme a Role e Empresa
+  const redirecionarUsuario = (perfil) => {
+    const roleNormalized = perfil?.role?.toLowerCase() || '';
+
+    // Se for superdev / super_dev -> Tela de Dev
+    if (roleNormalized === 'superdev' || roleNormalized === 'super_dev' || roleNormalized === 'admin_global') {
+      window.location.href = '/admin-dev';
+    } 
+    // Se for colaborador/admin de uma empresa específica -> Tela da Empresa
+    else if (perfil?.empresa_id) {
+      window.location.href = `/empresa/${perfil.empresa_id}`; // Ou `/dashboard?empresa=${perfil.empresa_id}`
+    } 
+    // Fallback padrão
+    else {
+      window.location.href = '/dashboard';
     }
   };
 
