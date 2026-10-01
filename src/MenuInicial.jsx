@@ -20,10 +20,16 @@ import {
   AlignLeft,
   X,
   LogOut,
-  Layoutmenu
+  Lock,
+  LayoutGrid
 } from 'lucide-react';
 
 export default function MenuInicial() {
+  // ESTADOS DE AUTENTICAÇÃO E LOGIN
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginSenha, setLoginSenha] = useState('');
+
   // 1. ESTADOS DA SIDEBAR E NAVEGAÇÃO
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [cadastrosOpen, setCadastrosOpen] = useState(true); // Controla o menu sanfona de Cadastros
@@ -39,16 +45,6 @@ export default function MenuInicial() {
     { id: 'emp_1', nome: 'Empresa Matriz - HQ', uf: 'SP' },
     { id: 'emp_2', nome: 'Filial Regional Nordeste', uf: 'CE' },
     { id: 'emp_3', nome: 'Filial Regional Sul', uf: 'PR' }
-  ];
-
-  // HIERARQUIAS (Roles)
-  const roles = [
-    { value: 'admin_global', label: 'Admin Global' },
-    { value: 'admin_master', label: 'Admin Master' },
-    { value: 'admin_premium', label: 'Admin Premium' },
-    { value: 'admin', label: 'Admin' },
-    { value: 'operacional', label: 'Operacional' },
-    { value: 'aprendiz', label: 'Aprendiz' }
   ];
 
   // LISTA DE FUNCIONÁRIOS
@@ -118,6 +114,21 @@ export default function MenuInicial() {
 
   const [formData, setFormData] = useState(initialFormState);
 
+  // FUNÇÃO DE LOGIN
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (loginEmail && loginSenha) {
+      setIsLoggedIn(true);
+    }
+  };
+
+  // FUNÇÃO DE LOGOUT (Reseta e-mail, senha e volta pra tela de login)
+  const handleLogout = () => {
+    setLoginEmail('');
+    setLoginSenha('');
+    setIsLoggedIn(false);
+  };
+
   // AÇÕES DE MODAL E MANIPULAÇÃO
   const handleOpenModal = (func = null) => {
     if (func) {
@@ -164,6 +175,63 @@ export default function MenuInicial() {
     return matchSearch && matchStatus;
   });
 
+  // SE NÃO ESTIVER LOGADO, EXIBE A TELA DE LOGIN
+  if (!isLoggedIn) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-900 font-sans text-slate-800">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100">
+          <div className="flex flex-col items-center mb-6">
+            <div className="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md mb-3">
+              TM
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">Portal do Gestor</h1>
+            <p className="text-xs text-slate-500 mt-1">Faça login para acessar o sistema</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail Corporativo</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@empresa.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Senha</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={loginSenha}
+                  onChange={(e) => setLoginSenha(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer mt-2"
+            >
+              Entrar no Sistema
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // INTERFACE PRINCIPAL APÓS O LOGIN
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden">
       
@@ -197,11 +265,11 @@ export default function MenuInicial() {
               activeMenu === 'menu' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-slate-400'
             }`}
           >
-            <Layoutmenu className="w-4 h-4 text-indigo-400 shrink-0" />
+            <LayoutGrid className="w-4 h-4 text-indigo-400 shrink-0" />
             {sidebarOpen && <span>menu</span>}
           </button>
 
-          {/* Item 2: GRUPO CADASTROS (COM SUBMENU SANFONA) */}
+          {/* Item 2: GRUPO CADASTROS */}
           <div>
             <button
               onClick={() => setCadastrosOpen(!cadastrosOpen)}
@@ -236,19 +304,28 @@ export default function MenuInicial() {
 
         </div>
 
-        {/* RODAPÉ DA SIDEBAR */}
-        <div className="p-3 border-t border-slate-800 shrink-0">
+        {/* RODAPÉ DA SIDEBAR COM BOTÃO DE LOGOUT */}
+        <div className="p-3 border-t border-slate-800 shrink-0 flex flex-col gap-2">
           <div className="flex items-center gap-3 p-2 bg-slate-800/50 rounded-xl">
             <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs">
               AG
             </div>
             {sidebarOpen && (
               <div className="truncate text-xs">
-                <p className="font-semibold text-slate-200 truncate">Administrador</p>
+                <p className="font-semibold text-slate-200 truncate">{loginEmail || 'Administrador'}</p>
                 <span className="text-[10px] text-emerald-400 font-mono">Sessão Ativa</span>
               </div>
             )}
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+            title="Encerrar Sessão"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            {sidebarOpen && <span>Sair / Logout</span>}
+          </button>
         </div>
       </aside>
 

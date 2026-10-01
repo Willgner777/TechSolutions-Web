@@ -15,7 +15,6 @@ export default function AdminDevPage() {
   // Estados Globais de Dados
   const [empresas, setEmpresas] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
-  const [rlsStatus, setRlsStatus] = useState([]);
   const [resumoAlertas, setResumoAlertas] = useState({ despesasPendentes: 0, docsVencidos: 0, avariasChecklist: 0 });
 
   // Filtros de Busca
@@ -32,7 +31,6 @@ export default function AdminDevPage() {
   const [editingUsuarioId, setEditingUsuarioId] = useState(null);
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [emailUsuario, setEmailUsuario] = useState('');
-  const [senhaUsuario, setSenhaUsuario] = useState('');
   const [roleUsuario, setRoleUsuario] = useState('admin_empresa');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
 
@@ -135,6 +133,7 @@ export default function AdminDevPage() {
       carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: 'Erro ao salvar empresa: ' + err.message });
+    } finally {
       setLoading(false);
     }
   };
@@ -172,38 +171,32 @@ export default function AdminDevPage() {
     setEditingUsuarioId(null);
     setNomeUsuario('');
     setEmailUsuario('');
-    setSenhaUsuario('');
     setRoleUsuario('admin_empresa');
     setEmpresaIdSelecionada('');
   };
 
   const salvarUsuario = async (e) => {
     e.preventDefault();
-    if (!emailUsuario.trim()) {
-      setFeedback({ type: 'error', message: 'O e-mail do usuário é obrigatório.' });
-      return;
-    }
+    if (!editingUsuarioId) return;
 
     setLoading(true);
     try {
-      if (editingUsuarioId) {
-        const { error } = await supabase
-          .from('perfis')
-          .update({
-            nome: nomeUsuario,
-            role: roleUsuario,
-            empresa_id: empresaIdSelecionada || null
-          })
-          .eq('id', editingUsuarioId);
-        if (error) throw error;
-        setFeedback({ type: 'success', message: 'Perfil de usuário atualizado com sucesso!' });
-      } else {
-        setFeedback({ type: 'error', message: 'Para criar novos usuários autenticados, utilize o fluxo de cadastro padrão ou crie a auth via Supabase Admin API.' });
-      }
+      const { error } = await supabase
+        .from('perfis')
+        .update({
+          nome: nomeUsuario,
+          role: roleUsuario,
+          empresa_id: empresaIdSelecionada || null
+        })
+        .eq('id', editingUsuarioId);
+      if (error) throw error;
+      
+      setFeedback({ type: 'success', message: 'Perfil de usuário atualizado com sucesso!' });
       limparFormUsuario();
       carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: 'Erro ao salvar usuário: ' + err.message });
+    } finally {
       setLoading(false);
     }
   };
@@ -249,7 +242,7 @@ export default function AdminDevPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-900 border border-slate-800 p-6 rounded-3xl gap-4 shadow-xl">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-3 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 text-xs rounded-full font-mono font-bold">
+            <span className="px-3 py-1 bg-purple-500/15 text-purple-400 border border-purple-500/30 text-xs rounded-full font-mono font-bold">
               SUPER DEV GLOBAL CONSOLE
             </span>
             <span className="text-xs text-slate-400">• Acesso Cross-Tenant Ativo</span>
