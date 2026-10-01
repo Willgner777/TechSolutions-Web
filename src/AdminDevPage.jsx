@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './Admbases';
 import { 
   ShieldCheck, Building2, Users, RefreshCw, Edit, Trash2, X, LogOut, Search,
-  Power, GitBranch, Trash
+  Power, GitBranch, Trash, UserPlus
 } from 'lucide-react';
 
 export default function AdminDevPage() {
-  const [activeTab, setActiveTab] = useState('empresas'); // 'usuarios' | 'empresas' | 'lixeira'
+  const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'empresas' | 'lixeira'
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
 
@@ -20,7 +20,7 @@ export default function AdminDevPage() {
   const [tipoEmpresa, setTipoEmpresa] = useState('MATRIZ');
   const [matrizIdSelecionada, setMatrizIdSelecionada] = useState('');
 
-  // ESTADOS: Usuários / Funcionários
+  // ESTADOS: Usuários / Funcionários (Edição)
   const [usuarios, setUsuarios] = useState([]);
   const [usuariosLixeira, setUsuariosLixeira] = useState([]);
   const [editingUsuarioId, setEditingUsuarioId] = useState(null);
@@ -31,6 +31,16 @@ export default function AdminDevPage() {
   const [cargoUsuario, setCargoUsuario] = useState('');
   const [contratoUsuario, setContratoUsuario] = useState('');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
+
+  // ESTADOS: Novo Usuário / Funcionário (Cadastro)
+  const [exibirFormNovoUsuario, setExibirFormNovoUsuario] = useState(false);
+  const [novoNome, setNovoNome] = useState('');
+  const [novoEmail, setNovoEmail] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [novoRole, setNovoRole] = useState('funcionario');
+  const [novoCargo, setNovoCargo] = useState('');
+  const [novoContrato, setNovoContrato] = useState('');
+  const [novaEmpresaId, setNovaEmpresaId] = useState('');
 
   useEffect(() => {
     carregarDadosGlobais();
@@ -156,7 +166,69 @@ export default function AdminDevPage() {
   };
 
   // --- MÉTODOS DE USUÁRIOS ---
+  const limparFormNovoUsuario = () => {
+    setNovoNome('');
+    setNovoEmail('');
+    setNovaSenha('');
+    setNovoRole('funcionario');
+    setNovoCargo('');
+    setNovoContrato('');
+    setNovaEmpresaId('');
+    setExibirFormNovoUsuario(false);
+  };
+
+  const criarNovoUsuario = async (e) => {
+    e.preventDefault();
+    if (!novoNome.trim() || !novoEmail.trim() || !novaSenha.trim()) {
+      return setFeedback({ type: 'error', message: 'Preencha Nome, E-mail e Senha.' });
+    }
+
+    setLoading(true);
+    try {
+      // 1. Cadastrar na autenticação Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: novoEmail,
+        password: novaSenha,
+        options: {
+          data: {
+            nome: novoNome,
+            role: novoRole
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      // 2. Inserir/Atualizar na tabela de perfis
+      if (authData.user) {
+        const { error: perfilError } = await supabase
+          .from('perfis')
+          .upsert([{
+            id: authData.user.id,
+            nome: novoNome,
+            email: novoEmail,
+            role: novoRole,
+            cargo: novoCargo,
+            contrato: novoContrato,
+            empresa_id: novoRole === 'super_dev' ? null : (novaEmpresaId || null),
+            ativo: true
+          }]);
+
+        if (perfilError) throw perfilError;
+      }
+
+      setFeedback({ type: 'success', message: 'Novo funcionário cadastrado com sucesso!' });
+      limparFormNovoUsuario();
+      carregarDadosGlobais({ manterFeedback: true });
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'Erro ao cadastrar funcionário: ' + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const prepararEdicaoUsuario = (usr) => {
+    setExibirFormNovoUsuario(false);
     setEditingUsuarioId(usr.id);
     setNomeUsuario(usr.nome || '');
     setEmailUsuario(usr.email || '');
@@ -317,6 +389,96 @@ export default function AdminDevPage() {
         {/* TAB 1: UTILIZADORES */}
         {activeTab === 'usuarios' && (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            
+            {/* BOTÃO PARA ABRIR O FORMULÁRIO DE NOVO FUNCIONÁRIO */}
+            {!exibirFormNovoUsuario && !editingUsuarioId && (
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-900">Lista de Utilizadores</h3>
+                <button
+                  onClick={() => {
+                    limparFormUsuario();
+                    setExibirFormNovoUsuario(true);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold hover:bg-purple-700 transition"
+                >
+                  <UserPlus className="w-4 h-4" /> Novo Funcionário
+                </button>
+              </div>
+            )}
+
+            {/* FORMULÁRIO DE CADASTRO: NOVO FUNCIONÁRIO */}
+            {exibirFormNovoUsuario && (
+              <form onSubmit={criarNovoUsuario} className="bg-purple-50/50 border border-purple-200 p-6 rounded-2xl space-y-5">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-purple-900 uppercase tracking-wider flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-purple-600" /> Cadastrar Novo Funcionário / Usuário
+                  </h3>
+                  <button type="button" onClick={limparFormNovoUsuario} className="text-slate-500 hover:text-slate-800">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Nome Completo *</label>
+                    <input type="text" required value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex: João Silva" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">E-mail *</label>
+                    <input type="email" required value={novoEmail} onChange={(e) => setNovoEmail(e.target.value)} placeholder="joao@empresa.com" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Senha Provisória *</label>
+                    <input type="password" required value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} placeholder="Mínimo 6 caracteres" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Permissão (Role)</label>
+                    <select value={novoRole} onChange={(e) => setNovoRole(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold">
+                      <option value="funcionario">funcionario</option>
+                      <option value="admin_empresa">admin_empresa</option>
+                      <option value="super_dev">super_dev (Acesso Total)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Empresa / Filial Vinculada</label>
+                    <select 
+                      value={novaEmpresaId} 
+                      onChange={(e) => setNovaEmpresaId(e.target.value)} 
+                      disabled={novoRole === 'super_dev'}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <option value="">Nenhuma / Sem Empresa</option>
+                      {empresas.map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.nome || emp.nome_fantasia} {emp.matriz_id ? '(Filial)' : '(Matriz)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Cargo Operacional</label>
+                    <input type="text" value={novoCargo} onChange={(e) => setNovoCargo(e.target.value)} placeholder="Ex: Motorista, Gerente" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Contrato Vinculado</label>
+                    <input type="text" value={novoContrato} onChange={(e) => setNovoContrato(e.target.value)} placeholder="Ex: Contrato SP-01" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={limparFormNovoUsuario} className="px-5 py-2.5 bg-slate-200 text-slate-700 rounded-2xl text-sm font-semibold">Cancelar</button>
+                  <button type="submit" disabled={loading} className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold">Cadastrar Funcionário</button>
+                </div>
+              </form>
+            )}
+
+            {/* FORMULÁRIO DE EDIÇÃO */}
             {editingUsuarioId && (
               <form onSubmit={salvarUsuario} className="bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-5">
                 <h3 className="text-xs font-semibold text-purple-700 uppercase tracking-wider flex items-center gap-2">
@@ -343,7 +505,6 @@ export default function AdminDevPage() {
                     </select>
                   </div>
 
-                  {/* CAMPO DE VÍNCULO DE EMPRESA / FILIAL */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">
                       Empresa / Filial Vinculada {roleUsuario === 'super_dev' && '(Não aplicável ao Super Dev)'}
@@ -395,6 +556,7 @@ export default function AdminDevPage() {
               </form>
             )}
 
+            {/* TABELA DE USUÁRIOS */}
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
