@@ -4,7 +4,6 @@ import { supabase } from './Admbases';
 import LoginPage from './LoginPage';
 import AuthenticatedLayout from './AuthenticatedLayout';
 
-// Carrega o perfil e a empresa em consultas separadas (não depende de FK no schema cache).
 async function carregarPerfil(userId) {
   const { data: perfil, error } = await supabase
     .from('perfis')
@@ -63,7 +62,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [erroPerfil, setErroPerfil] = useState('');
   const [loading, setLoading] = useState(true);
-  const usuarioCarregado = useRef(null); // id do usuário cujo perfil já está em memória
+  const usuarioCarregado = useRef(null);
 
   useEffect(() => {
     let ativo = true;
@@ -82,7 +81,6 @@ export default function App() {
 
       setSession(sess);
 
-      // O Supabase reemite SIGNED_IN ao voltar para a aba: não recarrega a tela à toa.
       if (usuarioCarregado.current === sess.user.id) return;
 
       setLoading(true);
@@ -91,7 +89,7 @@ export default function App() {
         if (!ativo) return;
         usuarioCarregado.current = sess.user.id;
         setUserProfile(perfil);
-        setErroPerfil(perfil ? '' : 'Seu usuário não possui um perfil cadastrado. Peça a um administrador para criá-lo.');
+        setErroPerfil(perfil ? '' : 'O seu utilizador não possui um perfil registado.');
       } catch (err) {
         if (!ativo) return;
         setUserProfile(null);
@@ -110,7 +108,6 @@ export default function App() {
         if (sess) setSession(sess);
         return;
       }
-      // Evita chamadas ao Supabase dentro do próprio callback de autenticação.
       setTimeout(() => aplicarSessao(sess), 0);
     });
 
@@ -122,16 +119,14 @@ export default function App() {
 
   if (loading) return <TelaCarregando />;
 
-  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
+  const home = '/admin-dev';
 
   let conteudoAutenticado = null;
   if (session) {
     if (!userProfile) {
       conteudoAutenticado = <TelaAcessoBloqueado mensagem={erroPerfil || 'Perfil não encontrado.'} />;
     } else if (userProfile.ativo === false) {
-      conteudoAutenticado = <TelaAcessoBloqueado mensagem="Este usuário está desativado. Fale com o administrador." />;
-    } else if (userProfile.empresa_id && userProfile.empresas?.ativo === false) {
-      conteudoAutenticado = <TelaAcessoBloqueado mensagem="A empresa vinculada a este usuário está desativada." />;
+      conteudoAutenticado = <TelaAcessoBloqueado mensagem="Este utilizador está desativado." />;
     } else {
       conteudoAutenticado = <AuthenticatedLayout userProfile={userProfile} home={home} />;
     }
