@@ -3,75 +3,41 @@ import { supabase, criarClienteIsolado } from './Admbases';
 import { 
   ShieldCheck, Building2, Users, Database, AlertTriangle, 
   Activity, ArrowUpRight, Plus, RefreshCw, CheckCircle2, 
-  XCircle, Edit, Trash2, X, LogOut, KeyRound, Lock,
-  Search, ExternalLink, UserCheck, UserX, Clock, FileWarning
+  Edit, X, LogOut, KeyRound, Search, Clock, FileWarning
 } from 'lucide-react';
 
-// Interfaces de Tipagem
-interface Empresa {
-  id: string;
-  nome?: string;
-  nome_fantasia?: string;
-  cnpj?: string;
-  plano?: string;
-  ativo?: boolean;
-  created_at?: string;
-}
-
-interface Usuario {
-  id: string;
-  email: string;
-  nome?: string;
-  role: string;
-  empresa_id?: string | null;
-  ativo?: boolean;
-  empresas?: {
-    nome?: string;
-  } | null;
-}
-
-interface RLSStatus {
-  schemaname: string;
-  tablename: string;
-  rowsecurity: boolean;
-  policyname: string | null;
-  cmd: string | null;
-  permissive: string | null;
-}
-
 export default function AdminDevPage() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'empresas' | 'usuarios' | 'rls_health'>('overview');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
 
-  // Estados Globais de Dados
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [rlsStatus, setRlsStatus] = useState<RLSStatus[]>([]);
+  // Estados Globais
+  const [empresas, setEmpresas] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
+  const [rlsStatus, setRlsStatus] = useState([]);
   const [resumoAlertas, setResumoAlertas] = useState({ despesasPendentes: 0, docsVencidos: 0, avariasChecklist: 0 });
 
-  // Filtros de Busca
-  const [searchEmpresa, setSearchEmpresa] = useState<string>('');
-  const [searchUsuario, setSearchUsuario] = useState<string>('');
+  // Filtros
+  const [searchEmpresa, setSearchEmpresa] = useState('');
+  const [searchUsuario, setSearchUsuario] = useState('');
 
-  // Form States: Empresa
-  const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
-  const [nomeEmpresa, setNomeEmpresa] = useState<string>('');
-  const [cnpjEmpresa, setCnpjEmpresa] = useState<string>('');
-  const [planoEmpresa, setPlanoEmpresa] = useState<string>('PRO');
+  // Formulário: Empresa
+  const [editingEmpresaId, setEditingEmpresaId] = useState(null);
+  const [nomeEmpresa, setNomeEmpresa] = useState('');
+  const [cnpjEmpresa, setCnpjEmpresa] = useState('');
+  const [planoEmpresa, setPlanoEmpresa] = useState('PRO');
 
-  // Form States: Usuário
-  const [editingUsuarioId, setEditingUsuarioId] = useState<string | null>(null);
-  const [nomeUsuario, setNomeUsuario] = useState<string>('');
-  const [emailUsuario, setEmailUsuario] = useState<string>('');
-  const [senhaUsuario, setSenhaUsuario] = useState<string>('');
-  const [roleUsuario, setRoleUsuario] = useState<string>('admin_empresa');
-  const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState<string>('');
+  // Formulário: Usuário
+  const [editingUsuarioId, setEditingUsuarioId] = useState(null);
+  const [nomeUsuario, setNomeUsuario] = useState('');
+  const [emailUsuario, setEmailUsuario] = useState('');
+  const [senhaUsuario, setSenhaUsuario] = useState('');
+  const [roleUsuario, setRoleUsuario] = useState('admin_empresa');
+  const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
 
   useEffect(() => {
     carregarDadosGlobais();
 
-    // Configuração do Supabase Realtime para escutar mudanças e reatualizar
     const rlsChannel = supabase
       .channel('realtime-rls-changes')
       .on(
@@ -92,22 +58,22 @@ export default function AdminDevPage() {
     await supabase.auth.signOut();
   };
 
-  const carregarDadosGlobais = async ({ manterFeedback = false }: { manterFeedback?: boolean } = {}) => {
+  const carregarDadosGlobais = async ({ manterFeedback = false } = {}) => {
     setLoading(true);
     if (!manterFeedback) setFeedback({ type: '', message: '' });
 
     try {
-      // 1. Carregar Empresas
+      // 1. Busca Empresas
       const { data: dataEmpresas, error: errEmpresas } = await supabase
         .from('empresas')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (errEmpresas) throw errEmpresas;
-      const empresasData = (dataEmpresas || []) as Empresa[];
+      const empresasData = dataEmpresas || [];
       setEmpresas(empresasData);
 
-      // 2. Carregar Perfis
+      // 2. Busca Perfis
       const { data: dataUsuarios, error: errUsuarios } = await supabase
         .from('perfis')
         .select('*')
@@ -115,7 +81,7 @@ export default function AdminDevPage() {
 
       if (errUsuarios) throw errUsuarios;
 
-      const usuariosMapeados: Usuario[] = (dataUsuarios || []).map((usr: any) => {
+      const usuariosMapeados = (dataUsuarios || []).map((usr) => {
         const emp = empresasData.find(e => e.id === usr.empresa_id);
         return {
           ...usr,
@@ -124,7 +90,7 @@ export default function AdminDevPage() {
       });
       setUsuarios(usuariosMapeados);
 
-      // 3. Carregar métricas de Alertas Globais
+      // 3. Mapeamento de métricas operacionais
       try {
         const { count: countDespesas } = await supabase
           .from('despesas')
@@ -146,29 +112,29 @@ export default function AdminDevPage() {
           docsVencidos: countDocs || 0,
           avariasChecklist: countAvarias || 0
         });
-      } catch (errAlerts: any) {
-        console.warn('Erro ao carregar métricas secundárias:', errAlerts.message);
+      } catch (errAlerts) {
+        console.warn('Alerta secundário irrelevante:', errAlerts.message);
       }
 
-      // 4. Execução da função SQL RPC dev_rls_status()
+      // 4. Invocação da RPC de verificação do RLS
       try {
         const { data: rlsData, error: rlsErr } = await supabase.rpc('dev_rls_status');
         if (!rlsErr && rlsData) {
-          setRlsStatus(rlsData as RLSStatus[]);
+          setRlsStatus(rlsData);
         }
-      } catch (e: any) {
+      } catch (e) {
         console.warn('Erro ao carregar dev_rls_status:', e.message);
       }
 
-    } catch (err: any) {
-      setFeedback({ type: 'error', message: 'Erro ao carregar dados: ' + err.message });
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'Falha na sincronização: ' + err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  // --- HANDLERS DA EMPRESA ---
-  const handleSaveEmpresa = async (e: React.FormEvent) => {
+  // --- CONTROLE DE TENANTS / EMPRESAS ---
+  const handleSaveEmpresa = async (e) => {
     e.preventDefault();
     setLoading(true);
     setFeedback({ type: '', message: '' });
@@ -181,26 +147,26 @@ export default function AdminDevPage() {
           .eq('id', editingEmpresaId);
 
         if (error) throw error;
-        setFeedback({ type: 'success', message: 'Empresa atualizada com sucesso!' });
+        setFeedback({ type: 'success', message: 'Tenant atualizado!' });
       } else {
         const { error } = await supabase
           .from('empresas')
           .insert([{ nome: nomeEmpresa, nome_fantasia: nomeEmpresa, cnpj: cnpjEmpresa, plano: planoEmpresa, ativo: true }]);
 
         if (error) throw error;
-        setFeedback({ type: 'success', message: `Empresa "${nomeEmpresa}" criada com sucesso!` });
+        setFeedback({ type: 'success', message: `Tenant "${nomeEmpresa}" registrado!` });
       }
 
       resetEmpresaForm();
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err: any) {
+    } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAtivoEmpresa = async (id: string, statusAtual: boolean) => {
+  const handleToggleAtivoEmpresa = async (id, statusAtual) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -209,16 +175,16 @@ export default function AdminDevPage() {
         .eq('id', id);
 
       if (error) throw error;
-      setFeedback({ type: 'success', message: 'Status da empresa alterado com sucesso!' });
+      setFeedback({ type: 'success', message: 'Estado da empresa alterado!' });
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err: any) {
+    } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditEmpresa = (emp: Empresa) => {
+  const handleEditEmpresa = (emp) => {
     setEditingEmpresaId(emp.id);
     setNomeEmpresa(emp.nome || emp.nome_fantasia || '');
     setCnpjEmpresa(emp.cnpj || '');
@@ -233,8 +199,8 @@ export default function AdminDevPage() {
     setPlanoEmpresa('PRO');
   };
 
-  // --- HANDLERS DO USUÁRIO ---
-  const handleSaveUsuario = async (e: React.FormEvent) => {
+  // --- CONTROLE DE USUÁRIOS E AUTENTICAÇÃO ---
+  const handleSaveUsuario = async (e) => {
     e.preventDefault();
     setLoading(true);
     setFeedback({ type: '', message: '' });
@@ -251,7 +217,7 @@ export default function AdminDevPage() {
           .eq('id', editingUsuarioId);
 
         if (error) throw error;
-        setFeedback({ type: 'success', message: 'Perfil do usuário atualizado!' });
+        setFeedback({ type: 'success', message: 'Usuário atualizado com sucesso!' });
       } else {
         const { data: authData, error: authError } = await criarClienteIsolado().auth.signUp({
           email: emailUsuario,
@@ -273,20 +239,20 @@ export default function AdminDevPage() {
             }]);
 
           if (perfilError) throw perfilError;
-          setFeedback({ type: 'success', message: `Usuário "${nomeUsuario}" criado com sucesso!` });
+          setFeedback({ type: 'success', message: `Credencial criada para "${nomeUsuario}"!` });
         }
       }
 
       resetUsuarioForm();
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err: any) {
+    } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAtivoUsuario = async (id: string, statusAtual: boolean) => {
+  const handleToggleAtivoUsuario = async (id, statusAtual) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -295,16 +261,16 @@ export default function AdminDevPage() {
         .eq('id', id);
 
       if (error) throw error;
-      setFeedback({ type: 'success', message: 'Acesso do usuário alterado!' });
+      setFeedback({ type: 'success', message: 'Acesso alterado!' });
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err: any) {
+    } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditUsuario = (usr: Usuario) => {
+  const handleEditUsuario = (usr) => {
     setEditingUsuarioId(usr.id);
     setNomeUsuario(usr.nome || '');
     setEmailUsuario(usr.email || '');
@@ -322,7 +288,6 @@ export default function AdminDevPage() {
     setEmpresaIdSelecionada('');
   };
 
-  // Listas filtradas
   const empresasFiltradas = empresas.filter(e => 
     (e.nome || e.nome_fantasia || '').toLowerCase().includes(searchEmpresa.toLowerCase()) ||
     (e.cnpj || '').includes(searchEmpresa)
@@ -335,7 +300,7 @@ export default function AdminDevPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 md:p-8">
-      {/* 1. HEADER ENTERPRISE */}
+      {/* HEADER */}
       <header className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
@@ -370,7 +335,7 @@ export default function AdminDevPage() {
       </header>
 
       <main className="max-w-7xl mx-auto mt-6">
-        {/* 2. ALERTAS TÉCNICOS OPERACIONAIS */}
+        {/* RESUMO OPERACIONAL */}
         {(resumoAlertas.despesasPendentes > 0 || resumoAlertas.docsVencidos > 0) && (
           <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {resumoAlertas.despesasPendentes > 0 && (
@@ -405,7 +370,7 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* 3. METRICAS / NOC METRICS */}
+        {/* MÉTRICAS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border border-slate-200 p-5 rounded-2xl flex items-center justify-between shadow-sm">
             <div>
@@ -422,7 +387,7 @@ export default function AdminDevPage() {
 
           <div className="bg-white border border-slate-200 p-5 rounded-2xl flex items-center justify-between shadow-sm">
             <div>
-              <p className="text-xs text-slate-500 font-medium">Total de Credenciais</p>
+              <p className="text-xs text-slate-500 font-medium">Total de Perfis</p>
               <h3 className="text-2xl font-black text-slate-900 mt-1">{usuarios.length}</h3>
             </div>
             <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-blue-600">
@@ -434,7 +399,7 @@ export default function AdminDevPage() {
             <div>
               <p className="text-xs text-slate-500 font-medium">Isolamento Row-Level</p>
               <h3 className="text-sm font-bold text-emerald-600 mt-1 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" /> RLS Ativo no Schema
+                <ShieldCheck className="w-4 h-4 text-emerald-600" /> RLS Protegido
               </h3>
             </div>
             <div className="w-10 h-10 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
@@ -455,7 +420,7 @@ export default function AdminDevPage() {
           </div>
         </div>
 
-        {/* FEEDBACK BANNER */}
+        {/* MESSAGES */}
         {feedback.message && (
           <div className={`mb-6 p-4 rounded-2xl border flex items-center gap-3 text-sm font-medium ${
             feedback.type === 'success' 
@@ -467,19 +432,19 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* 4. TABS NAVEGAÇÃO */}
+        {/* NAVEGAÇÃO DE TABS */}
         <div className="flex border-b border-slate-200 mb-6 gap-2 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Visão Geral do Ecossistema', icon: Activity },
-            { id: 'empresas', label: 'Gestão de Tenants (Empresas)', icon: Building2 },
-            { id: 'usuarios', label: 'Perfis e Credenciais', icon: Users },
-            { id: 'rls_health', label: 'Segurança & RLS Health', icon: ShieldCheck }
+            { id: 'overview', label: 'Visão Geral', icon: Activity },
+            { id: 'empresas', label: 'Tenants (Empresas)', icon: Building2 },
+            { id: 'usuarios', label: 'Usuários e Perfis', icon: Users },
+            { id: 'rls_health', label: 'Auditoria RLS', icon: ShieldCheck }
           ].map(tab => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 pb-3 px-4 font-semibold text-xs sm:text-sm transition-all border-b-2 cursor-pointer whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50 rounded-t-lg'
@@ -493,12 +458,12 @@ export default function AdminDevPage() {
           })}
         </div>
 
-        {/* TAB 1: OVERVIEW / HEALTH DASHBOARD */}
+        {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
               <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-indigo-600" /> Resumo de Distribuição por Empresa
+                <Activity className="w-4 h-4 text-indigo-600" /> Tenants e Atividade Recente
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -540,14 +505,14 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* TAB 2: GESTÃO DE EMPRESAS */}
+        {/* TAB 2: TENANTS */}
         {activeTab === 'empresas' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-4 bg-white border border-slate-200 p-6 rounded-3xl h-fit shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Plus className="w-4 h-4 text-indigo-600" />
-                  {editingEmpresaId ? 'Editar Tenant' : 'Cadastrar Novo Tenant'}
+                  {editingEmpresaId ? 'Editar Tenant' : 'Novo Tenant'}
                 </h3>
                 {editingEmpresaId && (
                   <button onClick={resetEmpresaForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer">
@@ -558,13 +523,13 @@ export default function AdminDevPage() {
 
               <form onSubmit={handleSaveEmpresa} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600">Razão Social / Nome Fantasia</label>
+                  <label className="text-xs font-semibold text-slate-600">Razão Social / Fantasia</label>
                   <input
                     type="text"
                     required
                     value={nomeEmpresa}
                     onChange={(e) => setNomeEmpresa(e.target.value)}
-                    placeholder="Ex: Transportadora K-Log Ltda"
+                    placeholder="Ex: Empresa Exemplo Ltda"
                     className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -588,9 +553,9 @@ export default function AdminDevPage() {
                     onChange={(e) => setPlanoEmpresa(e.target.value)}
                     className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="BASIC">BASIC (Até 5 veículos)</option>
-                    <option value="PRO">PRO (Até 20 veículos)</option>
-                    <option value="ENTERPRISE">ENTERPRISE (Ilimitado)</option>
+                    <option value="BASIC">BASIC</option>
+                    <option value="PRO">PRO</option>
+                    <option value="ENTERPRISE">ENTERPRISE</option>
                   </select>
                 </div>
 
@@ -599,21 +564,21 @@ export default function AdminDevPage() {
                   disabled={loading}
                   className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition-all cursor-pointer"
                 >
-                  {loading ? 'Salvando...' : editingEmpresaId ? 'Atualizar Tenant' : 'Cadastrar Tenant'}
+                  {loading ? 'Processando...' : editingEmpresaId ? 'Salvar Alterações' : 'Criar Tenant'}
                 </button>
               </form>
             </div>
 
             <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                <h3 className="text-sm font-bold text-slate-900">Tenants Cadastrados</h3>
+                <h3 className="text-sm font-bold text-slate-900">Lista de Tenants</h3>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="text"
                     value={searchEmpresa}
                     onChange={(e) => setSearchEmpresa(e.target.value)}
-                    placeholder="Buscar empresa ou CNPJ..."
+                    placeholder="Filtrar por nome ou CNPJ..."
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -623,11 +588,11 @@ export default function AdminDevPage() {
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-100 text-[10px] font-mono text-slate-500 uppercase">
                     <tr>
-                      <th className="p-3 rounded-l-xl">Empresa / Razão Social</th>
+                      <th className="p-3 rounded-l-xl">Razão Social</th>
                       <th className="p-3">CNPJ</th>
                       <th className="p-3">Plano</th>
                       <th className="p-3">Status</th>
-                      <th className="p-3 text-right rounded-r-xl">Ações</th>
+                      <th className="p-3 text-right rounded-r-xl">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -653,11 +618,9 @@ export default function AdminDevPage() {
                           </button>
                         </td>
                         <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleEditEmpresa(emp)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <button onClick={() => handleEditEmpresa(emp)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -668,14 +631,14 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* TAB 3: GESTÃO DE USUÁRIOS */}
+        {/* TAB 3: USUÁRIOS */}
         {activeTab === 'usuarios' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-4 bg-white border border-slate-200 p-6 rounded-3xl h-fit shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Plus className="w-4 h-4 text-indigo-600" />
-                  {editingUsuarioId ? 'Editar Perfil' : 'Criar Novo Usuário'}
+                  {editingUsuarioId ? 'Editar Perfil' : 'Cadastrar Usuário'}
                 </h3>
                 {editingUsuarioId && (
                   <button onClick={resetUsuarioForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer">
@@ -692,7 +655,7 @@ export default function AdminDevPage() {
                     required
                     value={nomeUsuario}
                     onChange={(e) => setNomeUsuario(e.target.value)}
-                    placeholder="Ex: João da Silva"
+                    placeholder="Ex: Carlos Eduardo"
                     className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -700,19 +663,19 @@ export default function AdminDevPage() {
                 {!editingUsuarioId && (
                   <>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600">E-mail de Acesso</label>
+                      <label className="text-xs font-semibold text-slate-600">E-mail</label>
                       <input
                         type="email"
                         required
                         value={emailUsuario}
                         onChange={(e) => setEmailUsuario(e.target.value)}
-                        placeholder="usuario@empresa.com"
+                        placeholder="usuario@dominio.com"
                         className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-600">Senha Inicial</label>
+                      <label className="text-xs font-semibold text-slate-600">Senha Provisória</label>
                       <input
                         type="password"
                         required
@@ -726,21 +689,21 @@ export default function AdminDevPage() {
                 )}
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-600">Nível de Permissão (Role)</label>
+                  <label className="text-xs font-semibold text-slate-600">Perfil de Permissão</label>
                   <select
                     value={roleUsuario}
                     onChange={(e) => setRoleUsuario(e.target.value)}
                     className="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   >
                     <option value="admin_empresa">Admin da Empresa</option>
-                    <option value="funcionario">Funcionário / Operacional</option>
+                    <option value="funcionario">Operacional</option>
                     <option value="super_dev">Super Dev (Acesso Global)</option>
                   </select>
                 </div>
 
                 {roleUsuario !== 'super_dev' && (
                   <div>
-                    <label className="text-xs font-semibold text-slate-600">Tenant (Empresa Vinculada)</label>
+                    <label className="text-xs font-semibold text-slate-600">Vincular Tenant</label>
                     <select
                       required
                       value={empresaIdSelecionada}
@@ -760,21 +723,21 @@ export default function AdminDevPage() {
                   disabled={loading}
                   className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition-all cursor-pointer"
                 >
-                  {loading ? 'Salvando...' : editingUsuarioId ? 'Atualizar Perfil' : 'Criar Usuário'}
+                  {loading ? 'Salvando...' : editingUsuarioId ? 'Atualizar Perfil' : 'Registrar Usuário'}
                 </button>
               </form>
             </div>
 
             <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                <h3 className="text-sm font-bold text-slate-900">Perfis Cadastrados</h3>
+                <h3 className="text-sm font-bold text-slate-900">Perfis de Usuários</h3>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                   <input
                     type="text"
                     value={searchUsuario}
                     onChange={(e) => setSearchUsuario(e.target.value)}
-                    placeholder="Buscar nome ou e-mail..."
+                    placeholder="Filtrar por nome ou e-mail..."
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -784,11 +747,11 @@ export default function AdminDevPage() {
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-100 text-[10px] font-mono text-slate-500 uppercase">
                     <tr>
-                      <th className="p-3 rounded-l-xl">Usuário / Email</th>
-                      <th className="p-3">Empresa</th>
+                      <th className="p-3 rounded-l-xl">Identificação</th>
+                      <th className="p-3">Tenant Associado</th>
                       <th className="p-3">Permissão</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right rounded-r-xl">Ações</th>
+                      <th className="p-3">Acesso</th>
+                      <th className="p-3 text-right rounded-r-xl">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -836,7 +799,7 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* TAB 4: SEGURANÇA & RLS HEALTH / AUDITORIA */}
+        {/* TAB 4: RLS HEALTH */}
         {activeTab === 'rls_health' && (
           <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -860,9 +823,9 @@ export default function AdminDevPage() {
             {rlsStatus.length === 0 ? (
               <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center">
                 <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700">Nenhum dado de auditoria localizado.</p>
+                <p className="text-sm font-semibold text-slate-700">Nenhum registro de auditoria RLS encontrado.</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Certifique-se de que executou a função SQL <code className="font-mono text-indigo-600">dev_rls_status()</code> no PostgreSQL.
+                  Certifique-se de executar a função <code className="font-mono text-indigo-600">dev_rls_status()</code> no PostgreSQL.
                 </p>
               </div>
             ) : (
