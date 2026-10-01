@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './Admbases';
 import LoginPage from './LoginPage';
-import AuthenticatedLayout from './AuthenticatedLayout';
+import Menu from './Menu';
+import AdminDevPage from './AdminDevPage';
+import FuncionariosPage from './FuncionariosPage'; // Tela de cadastro de funcionários
 
 async function carregarPerfil(userId) {
   const { data: perfil, error } = await supabase
@@ -57,11 +59,35 @@ function TelaAcessoBloqueado({ mensagem }) {
   );
 }
 
+// Layout Autenticado da Aplicação Principal
+function PainelLayout({ userProfile, onLogout, onAbrirConsoleDev }) {
+  const [activeTab, setActiveTab] = useState('funcionarios');
+
+  return (
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
+      {/* Menu Sidebar Lateral */}
+      <Menu
+        usuarioAtual={userProfile}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={onLogout}
+        abrirConsoleDev={onAbrirConsoleDev}
+      />
+
+      {/* Conteúdo dinâmico de acordo com a aba selecionada no Menu */}
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
+        {activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
+      </main>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [erroPerfil, setErroPerfil] = useState('');
   const [loading, setLoading] = useState(true);
+  const [visaoDev, setVisaoDev] = useState(false);
   const usuarioCarregado = useRef(null);
 
   useEffect(() => {
@@ -76,6 +102,7 @@ export default function App() {
         setUserProfile(null);
         setErroPerfil('');
         setLoading(false);
+        setVisaoDev(false);
         return;
       }
 
@@ -90,6 +117,11 @@ export default function App() {
         usuarioCarregado.current = sess.user.id;
         setUserProfile(perfil);
         setErroPerfil(perfil ? '' : 'O seu utilizador não possui um perfil registado.');
+        
+        // Se for super_dev, pode iniciar na visão dev se desejar
+        if (perfil?.role === 'super_dev') {
+          setVisaoDev(true);
+        }
       } catch (err) {
         if (!ativo) return;
         setUserProfile(null);
@@ -117,27 +149,66 @@ export default function App() {
     };
   }, []);
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   if (loading) return <TelaCarregando />;
 
-  // Rota principal apontando exclusivamente para o admin-dev
-  const home = '/admin-dev';
-
-  let conteudoAutenticado = null;
+  // Tratamento de acessos bloqueados/sem perfil
   if (session) {
     if (!userProfile) {
-      conteudoAutenticado = <TelaAcessoBloqueado mensagem={erroPerfil || 'Perfil não encontrado.'} />;
-    } else if (userProfile.ativo === false) {
-      conteudoAutenticado = <TelaAcessoBloqueado mensagem="Este utilizador está desativado." />;
-    } else {
-      conteudoAutenticado = <AuthenticatedLayout userProfile={userProfile} home={home} />;
+      return <TelaAcessoBloqueado mensagem={erroPerfil || 'Perfil não encontrado.'} />;
+    }
+    if (userProfile.ativo === false) {
+      return <TelaAcessoBloqueado mensagem="Este utilizador está desativado." />;
     }
   }
+
+  // Rota inicial dependendo da role
+  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        <Route path="/login" element={!session ? <LoginPage /> : <Navigate to={home} replace />} />
-        <Route path="/*" element={session ? conteudoAutenticado : <Navigate to="/login" replace />} />
+        <Route 
+          path="/login" 
+          element={!session ? <LoginPage /> : <Navigate to={home} replace />} 
+        />
+        
+        {/* Rota do Console Super Dev */}
+        <Route 
+          path="/admin-dev" 
+          element={
+            session && userProfile?.role === 'super_dev' ? (
+              <AdminDevPage />
+            ) : (
+              <Navigate to={session ? '/dashboard' : '/login'} replace />
+            )
+          } 
+        />
+
+        {/* Rota do Painel Principal para Usuários / Funcionários */}
+        <Route 
+          path="/dashboard" 
+          element={
+            session ? (
+              <PainelLayout 
+                userProfile={userProfile} 
+                onLogout={handleLogout}
+                onAbrirConsoleDev={() => window.location.href = '/admin-dev'}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+
+        {/* Redirecionamento Padrão */}
+        <Route 
+          path="*" 
+          element={<Navigate to={session ? home : '/login'} replace />} 
+        />
       </Routes>
     </Router>
   );

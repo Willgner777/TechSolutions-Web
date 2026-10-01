@@ -17,7 +17,7 @@ const traduzirErroLogin = (error) => {
   return msg || 'Erro ao realizar login.';
 };
 
-export default function LoginPage() {
+export default function LoginPage({ onLoginSucesso }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +36,7 @@ export default function LoginPage() {
     setErrorMessage('');
 
     try {
+      // 1. Autenticação no Supabase
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -47,8 +48,27 @@ export default function LoginPage() {
         return;
       }
 
-      // Login bem-sucedido, o App.jsx vai detetar a sessão e abrir o AdminDevPage
-      window.location.href = '/admin-dev';
+      // 2. Buscar o perfil para saber a permissão (Role) do usuário
+      if (authData?.user) {
+        const { data: perfil } = await supabase
+          .from('perfis')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single();
+
+        // 3. Se tiver callback de login, chama ele, senão redireciona
+        if (onLoginSucesso) {
+          onLoginSucesso(perfil);
+        } else {
+          // Se for super_dev abre a console dev, senão vai para o painel principal
+          if (perfil?.role === 'super_dev') {
+            window.location.href = '/admin-dev';
+          } else {
+            window.location.href = '/';
+          }
+        }
+      }
+
     } catch (err) {
       setErrorMessage(traduzirErroLogin(err));
       setLoading(false);
@@ -71,7 +91,7 @@ export default function LoginPage() {
           <div className="relative z-10 my-auto py-8 flex flex-col items-center text-center">
             <h3 className="text-white font-semibold text-xl">Plataforma Operacional</h3>
             <p className="text-purple-200/70 text-xs sm:text-sm mt-2 max-w-sm">
-              Console Dev & Gestão de Acessos.
+              Gestão ERP & Controle de Acessos.
             </p>
           </div>
           <div className="relative z-10 text-xs text-purple-300/50">© 2026 Todos os direitos reservados.</div>

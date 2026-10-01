@@ -1,50 +1,55 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import AdminDevPage from './AdminDevPage';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from './Admbases';
-
-function TelaAcessoNegado() {
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-sans">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-6 shadow-2xl">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 font-bold text-xl">
-          !
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-xl font-bold text-white">Acesso Restrito</h1>
-          <p className="text-sm text-slate-400">
-            Esta aplicação é de uso exclusivo para administradores de desenvolvimento. O seu perfil não possui permissão de acesso.
-          </p>
-        </div>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-2xl shadow-lg transition-all text-sm cursor-pointer"
-        >
-          Sair e voltar ao login
-        </button>
-      </div>
-    </div>
-  );
-}
+import Menu from './Menu';
+import AdminDevPage from './AdminDevPage';
+import FuncionariosPage from './FuncionariosPage';
 
 export default function AuthenticatedLayout({ userProfile }) {
+  const navigate = useNavigate();
   const eSuperDev = userProfile?.role === 'super_dev';
 
-  if (!eSuperDev) {
-    return <TelaAcessoNegado />;
-  }
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans">
-      <main>
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 font-sans">
+      {/* MENU LATERAL SIDEBAR */}
+      <Menu
+        usuarioAtual={userProfile}
+        onLogout={handleLogout}
+        abrirConsoleDev={() => navigate('/admin-dev')}
+      />
+
+      {/* ÁREA DE CONTEÚDO PRINCIPAL (ROTAS INTERNAS) */}
+      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <Routes>
-          {/* Rota principal do Super Dev */}
-          <Route path="/admin-dev" element={<AdminDevPage userProfile={userProfile} />} />
-          
-          {/* Qualquer outra rota redireciona para o painel admin-dev */}
-          <Route path="*" element={<Navigate to="/admin-dev" replace />} />
+          {/* Rota do Cadastro de Funcionários */}
+          <Route 
+            path="/funcionarios" 
+            element={<FuncionariosPage userProfile={userProfile} />} 
+          />
+
+          {/* Rota Exclusiva do Super Dev */}
+          <Route 
+            path="/admin-dev" 
+            element={
+              eSuperDev ? (
+                <AdminDevPage userProfile={userProfile} />
+              ) : (
+                <Navigate to="/funcionarios" replace />
+              )
+            } 
+          />
+
+          {/* Rota Padrão (Redireciona para Funcionários se for usuário normal, ou Admin Dev se for Super Dev) */}
+          <Route 
+            path="*" 
+            element={<Navigate to={eSuperDev ? "/admin-dev" : "/funcionarios"} replace />} 
+          />
         </Routes>
       </main>
     </div>
   );
-}
+} 
