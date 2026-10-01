@@ -3,10 +3,11 @@ import { supabase, criarClienteIsolado } from './Admbases';
 import { 
   ShieldCheck, Building2, Users, Database, AlertTriangle, 
   Activity, ArrowUpRight, Plus, RefreshCw, CheckCircle2, 
-  Edit, X, LogOut, KeyRound, Search, Clock, FileWarning
+  Edit, X, LogOut, KeyRound, Search, Clock, FileWarning,
+  LayoutDashboard, ExternalLink
 } from 'lucide-react';
 
-export default function AdminDevPage() {
+export default function AdminDevPage({ onNavegarMenu }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', message: '' });
@@ -56,6 +57,16 @@ export default function AdminDevPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // Função para direcionar ao menu principal / sistema
+  const handleIrParaMenu = () => {
+    if (typeof onNavegarMenu === 'function') {
+      onNavegarMenu();
+    } else {
+      // Redirecionamento padrão caso não passe a prop de navegação
+      window.location.href = '/dashboard'; 
+    }
   };
 
   const carregarDadosGlobais = async ({ manterFeedback = false } = {}) => {
@@ -314,7 +325,16 @@ export default function AdminDevPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center flex-wrap gap-3">
+          {/* BOTÃO PARA NAVEGAR AO MENU PRINCIPAL DO SISTEMA */}
+          <button
+            onClick={handleIrParaMenu}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm shadow-indigo-200 transition-all cursor-pointer"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Acessar Menu Principal
+          </button>
+
           <button
             onClick={() => carregarDadosGlobais()}
             disabled={loading}
@@ -335,6 +355,25 @@ export default function AdminDevPage() {
       </header>
 
       <main className="max-w-7xl mx-auto mt-6">
+        {/* CARD PROMINENTE DE ACESSO AO MENU/SISTEMA */}
+        <div className="mb-6 p-5 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 rounded-3xl text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-800">
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 font-semibold mb-2">
+              <ShieldCheck className="w-3 h-3" /> Modo Super Admin Ativo
+            </span>
+            <h2 className="text-lg font-bold">Navegar como Administrador Global</h2>
+            <p className="text-xs text-indigo-200 mt-1 max-w-2xl">
+              Como <code className="text-indigo-300 font-mono">super_dev</code>, você possui permissão total de bypass de RLS para acessar todas as telas do sistema (Clientes, Veículos, Despesas, Checklists) com visão irrestrita.
+            </p>
+          </div>
+          <button
+            onClick={handleIrParaMenu}
+            className="shrink-0 flex items-center gap-2 px-5 py-3 bg-indigo-500 hover:bg-indigo-400 text-white rounded-2xl text-xs font-bold transition-all shadow-md cursor-pointer"
+          >
+            Acessar Sistema Completo <ExternalLink className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* RESUMO OPERACIONAL */}
         {(resumoAlertas.despesasPendentes > 0 || resumoAlertas.docsVencidos > 0) && (
           <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
