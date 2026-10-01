@@ -36,9 +36,9 @@ export default function AdminDevPage() {
     await supabase.auth.signOut();
   };
 
-  const carregarDadosGlobais = async () => {
+  const carregarDadosGlobais = async ({ manterFeedback = false } = {}) => {
     setLoading(true);
-    setFeedback({ type: '', message: '' });
+    if (!manterFeedback) setFeedback({ type: '', message: '' });
 
     try {
       const { data: dataEmpresas, error: errEmpresas } = await supabase
@@ -98,7 +98,7 @@ export default function AdminDevPage() {
       }
 
       resetEmpresaForm();
-      carregarDadosGlobais();
+      carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
@@ -121,7 +121,7 @@ export default function AdminDevPage() {
       const { error } = await supabase.from('empresas').delete().eq('id', id);
       if (error) throw error;
       setFeedback({ type: 'success', message: 'Empresa removida com sucesso!' });
-      carregarDadosGlobais();
+      carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
@@ -181,7 +181,7 @@ export default function AdminDevPage() {
       }
 
       resetUsuarioForm();
-      carregarDadosGlobais();
+      carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
@@ -205,7 +205,7 @@ export default function AdminDevPage() {
       const { error } = await supabase.from('perfis').delete().eq('id', id);
       if (error) throw error;
       setFeedback({ type: 'success', message: 'Usuário removido!' });
-      carregarDadosGlobais();
+      carregarDadosGlobais({ manterFeedback: true });
     } catch (err) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
