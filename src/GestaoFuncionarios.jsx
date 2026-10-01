@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './Admbases';
+import { supabase } from './Admbases'; // Ajuste o caminho se necessário
 import { 
-  Users, UserPlus, Search, Edit, Trash, X, Calendar, 
-  Building2, Briefcase, MapPin, Power, RefreshCw 
+  Users, UserPlus, Search, Edit, Trash, X, RefreshCw 
 } from 'lucide-react';
 
-// Lista completa dos estados brasileiros
 const ESTADOS_BRASIL = [
   { sigla: 'AC', nome: 'AC - Acre' },
   { sigla: 'AL', nome: 'AL - Alagoas' },
@@ -41,18 +39,15 @@ export default function GestaoFuncionarios() {
   const [feedback, setFeedback] = useState({ type: '', message: '' });
   const [busca, setBusca] = useState('');
 
-  // Dados do Usuário Logado e da Empresa
   const [empresaId, setEmpresaId] = useState(null);
-
-  // Listas
   const [funcionarios, setFuncionarios] = useState([]);
-  const [contratos, setContratos] = useState([]); // Preparado para o cadastro futuro de contratos
+  const [contratos, setContratos] = useState([]);
 
-  // Modal / Formulário
+  // Estado que controla a exibição do formulário
   const [exibirForm, setExibirForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  // Campos do Formulário
+  // Form Fields
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -68,7 +63,6 @@ export default function GestaoFuncionarios() {
     carregarPerfilEmpresaEFuncionarios();
   }, []);
 
-  // Formatar data YYYY-MM-DD para DD/MM/AAAA na visualização
   const formatarDataBR = (dataIso) => {
     if (!dataIso) return '-';
     const partes = dataIso.split('-');
@@ -79,11 +73,9 @@ export default function GestaoFuncionarios() {
   const carregarPerfilEmpresaEFuncionarios = async () => {
     setLoading(true);
     try {
-      // 1. Obter usuário logado
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuário não autenticado.');
 
-      // 2. Buscar perfil para identificar o empresa_id
       const { data: perfil, error: errPerfil } = await supabase
         .from('perfis')
         .select('empresa_id')
@@ -91,28 +83,27 @@ export default function GestaoFuncionarios() {
         .single();
 
       if (errPerfil || !perfil?.empresa_id) {
-        throw new Error('Não foi possível identificar a empresa vinculada ao seu usuário.');
+        throw new Error('Empresa vinculada não encontrada.');
       }
 
-      const idEmpresaLogada = perfil.empresa_id;
-      setEmpresaId(idEmpresaLogada);
+      setEmpresaId(perfil.empresa_id);
 
-      // 3. Buscar contratos da empresa (Preparado para a futura tabela 'contratos')
+      // Buscar contratos se existirem
       try {
         const { data: dataContratos } = await supabase
           .from('contratos')
           .select('id, nome, codigo')
-          .eq('empresa_id', idEmpresaLogada);
+          .eq('empresa_id', perfil.empresa_id);
         if (dataContratos) setContratos(dataContratos);
       } catch (e) {
-        // Tabela de contratos ainda não criada; manter como array vazio sem quebrar
+        // Tabela ainda não existente
       }
 
-      // 4. Buscar funcionários da mesma empresa
+      // Buscar funcionários
       const { data: dataFunc, error: errFunc } = await supabase
         .from('perfis')
         .select('*')
-        .eq('empresa_id', idEmpresaLogada)
+        .eq('empresa_id', perfil.empresa_id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
@@ -145,7 +136,7 @@ export default function GestaoFuncionarios() {
     setEditingId(func.id);
     setNome(func.nome || '');
     setEmail(func.email || '');
-    setSenha(''); // Senha vazia na edição
+    setSenha('');
     setCargo(func.cargo || '');
     setSetor(func.setor || '');
     setContrato(func.contrato || '');
@@ -158,18 +149,9 @@ export default function GestaoFuncionarios() {
 
   const salvarFuncionario = async (e) => {
     e.preventDefault();
-    if (!nome.trim() || !email.trim()) {
-      return setFeedback({ type: 'error', message: 'Preencha os campos obrigatórios (Nome e E-mail).' });
-    }
-
-    if (!editingId && !senha.trim()) {
-      return setFeedback({ type: 'error', message: 'Informe uma senha provisória para o novo funcionário.' });
-    }
-
     setLoading(true);
     try {
       if (editingId) {
-        // ATUALIZAÇÃO
         const { error } = await supabase
           .from('perfis')
           .update({
@@ -187,15 +169,12 @@ export default function GestaoFuncionarios() {
           .eq('id', editingId);
 
         if (error) throw error;
-        setFeedback({ type: 'success', message: 'Funcionário atualizado com sucesso!' });
+        setFeedback({ type: 'success', message: 'Funcionário atualizado!' });
       } else {
-        // NOVO CADASTRO NO SUPABASE AUTH + PERFIS
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
           password: senha,
-          options: {
-            data: { nome, role: 'funcionario' }
-          }
+          options: { data: { nome, role: 'funcionario' } }
         });
 
         if (authError) throw authError;
@@ -208,7 +187,7 @@ export default function GestaoFuncionarios() {
               nome,
               email,
               role: 'funcionario',
-              empresa_id: empresaId, // Vincula à empresa do usuário logado
+              empresa_id: empresaId,
               cargo,
               setor,
               contrato,
@@ -222,20 +201,20 @@ export default function GestaoFuncionarios() {
           if (perfilError) throw perfilError;
         }
 
-        setFeedback({ type: 'success', message: 'Novo funcionário cadastrado com sucesso!' });
+        setFeedback({ type: 'success', message: 'Funcionário cadastrado com sucesso!' });
       }
 
       limparFormulario();
       carregarPerfilEmpresaEFuncionarios();
     } catch (err) {
-      setFeedback({ type: 'error', message: 'Erro ao salvar: ' + err.message });
+      setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
   const moverParaLixeira = async (id) => {
-    if (!window.confirm('Tem certeza que deseja remover este funcionário?')) return;
+    if (!window.confirm('Deseja remover este funcionário?')) return;
     setLoading(true);
     try {
       const { error } = await supabase
@@ -247,57 +226,56 @@ export default function GestaoFuncionarios() {
       setFeedback({ type: 'success', message: 'Funcionário removido!' });
       carregarPerfilEmpresaEFuncionarios();
     } catch (err) {
-      setFeedback({ type: 'error', message: 'Erro ao remover: ' + err.message });
+      setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  // Filtragem na busca
   const funcionariosFiltrados = funcionarios.filter(f => 
     (f.nome || '').toLowerCase().includes(busca.toLowerCase()) ||
     (f.email || '').toLowerCase().includes(busca.toLowerCase()) ||
-    (f.cargo || '').toLowerCase().includes(busca.toLowerCase()) ||
-    (f.setor || '').toLowerCase().includes(busca.toLowerCase())
+    (f.cargo || '').toLowerCase().includes(busca.toLowerCase())
   );
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* CABEÇALHO DA PÁGINA */}
+        {/* CABEÇALHO */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <Users className="w-7 h-7 text-purple-600" />
               Gestão de Funcionários
             </h1>
-            <p className="text-xs text-slate-500 mt-1">Cadastre e gerencie a equipe da sua empresa</p>
+            <p className="text-xs text-slate-500 mt-1">Cadastre e gerencie a equipe da empresa</p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={carregarPerfilEmpresaEFuncionarios}
               className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200"
-              title="Atualizar dados"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
+            
+            {/* BOTÃO QUE ABRE O FORMULÁRIO */}
             {!exibirForm && (
               <button
                 onClick={() => {
                   limparFormulario();
                   setExibirForm(true);
                 }}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold text-sm rounded-2xl shadow-md shadow-purple-200 hover:bg-purple-700 transition"
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold text-sm rounded-2xl shadow-md hover:bg-purple-700 transition"
               >
-                <UserPlus className="w-4 h-4" /> Novo Funcionário
+                <UserPlus className="w-4 h-4" /> + Novo Funcionário
               </button>
             )}
           </div>
         </div>
 
-        {/* MENSAGEM DE FEEDBACK */}
+        {/* FEEDBACK */}
         {feedback.message && (
           <div className={`p-4 rounded-2xl text-sm border flex items-center justify-between ${
             feedback.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -311,9 +289,8 @@ export default function GestaoFuncionarios() {
         {exibirForm && (
           <form onSubmit={salvarFuncionario} className="bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl shadow-sm space-y-6">
             <div className="flex justify-between items-center border-b pb-4 border-slate-100">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-purple-600" />
-                {editingId ? 'Editar Funcionário' : 'Cadastrar Novo Funcionário'}
+              <h2 className="text-lg font-bold text-slate-900">
+                {editingId ? 'Editar Funcionário' : 'Novo Funcionário'}
               </h2>
               <button type="button" onClick={limparFormulario} className="text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
@@ -321,8 +298,6 @@ export default function GestaoFuncionarios() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              
-              {/* Nome */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Nome Completo *</label>
                 <input
@@ -330,12 +305,10 @@ export default function GestaoFuncionarios() {
                   required
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  placeholder="Ex: João da Silva"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail *</label>
                 <input
@@ -343,12 +316,10 @@ export default function GestaoFuncionarios() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="joao@empresa.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
               </div>
 
-              {/* Senha (apenas na criação) */}
               {!editingId && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Senha Provisória *</label>
@@ -357,37 +328,31 @@ export default function GestaoFuncionarios() {
                     required
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                   />
                 </div>
               )}
 
-              {/* Cargo */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Cargo</label>
                 <input
                   type="text"
                   value={cargo}
                   onChange={(e) => setCargo(e.target.value)}
-                  placeholder="Ex: Motorista, Analista"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
               </div>
 
-              {/* Setor */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Setor / Departamento</label>
                 <input
                   type="text"
                   value={setor}
                   onChange={(e) => setSetor(e.target.value)}
-                  placeholder="Ex: Logística, Financeiro"
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
               </div>
 
-              {/* Contrato (Tabela Suspensa) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Contrato Vinculado</label>
                 {contratos.length > 0 ? (
@@ -398,9 +363,7 @@ export default function GestaoFuncionarios() {
                   >
                     <option value="">Selecione um contrato...</option>
                     {contratos.map(c => (
-                      <option key={c.id} value={c.nome || c.codigo}>
-                        {c.nome || c.codigo}
-                      </option>
+                      <option key={c.id} value={c.nome || c.codigo}>{c.nome || c.codigo}</option>
                     ))}
                   </select>
                 ) : (
@@ -414,24 +377,20 @@ export default function GestaoFuncionarios() {
                 )}
               </div>
 
-              {/* Estado (UF) - Menu Suspenso */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Estado (UF)</label>
                 <select
                   value={uf}
                   onChange={(e) => setUf(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs font-semibold text-slate-700"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 >
                   <option value="">Selecione o Estado...</option>
                   {ESTADOS_BRASIL.map(est => (
-                    <option key={est.sigla} value={est.sigla}>
-                      {est.nome}
-                    </option>
+                    <option key={est.sigla} value={est.sigla}>{est.nome}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Data de Admissão (exibida em DD/MM/AAAA) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Data de Admissão</label>
                 <input
@@ -442,7 +401,6 @@ export default function GestaoFuncionarios() {
                 />
               </div>
 
-              {/* Data de Demissão (exibida em DD/MM/AAAA) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Data de Demissão</label>
                 <input
@@ -453,20 +411,18 @@ export default function GestaoFuncionarios() {
                 />
               </div>
 
-              {/* Status */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs font-semibold text-slate-700"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 >
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
                   <option value="Afastado">Afastado</option>
                 </select>
               </div>
-
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -480,7 +436,7 @@ export default function GestaoFuncionarios() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-xs font-semibold shadow-md shadow-purple-200"
+                className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-xs font-semibold shadow-md"
               >
                 {editingId ? 'Salvar Alterações' : 'Cadastrar Funcionário'}
               </button>
@@ -488,16 +444,15 @@ export default function GestaoFuncionarios() {
           </form>
         )}
 
-        {/* BUSCA E TABELA DE FUNCIONÁRIOS */}
+        {/* TABELA DE FUNCIONÁRIOS */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
-          
           <div className="relative max-w-md">
             <Search className="w-4 h-4 absolute left-4 top-3.5 text-slate-400" />
             <input
               type="text"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Buscar por nome, e-mail, cargo ou setor..."
+              placeholder="Buscar por nome ou e-mail..."
               className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-xs"
             />
           </div>
@@ -506,12 +461,10 @@ export default function GestaoFuncionarios() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
-                  <th className="py-3.5 px-4">Nome & E-mail</th>
+                  <th className="py-3.5 px-4">Nome</th>
                   <th className="py-3.5 px-4">Cargo / Setor</th>
-                  <th className="py-3.5 px-4">Contrato</th>
                   <th className="py-3.5 px-4">UF</th>
                   <th className="py-3.5 px-4">Admissão</th>
-                  <th className="py-3.5 px-4">Demissão</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4 text-right">Ações</th>
                 </tr>
@@ -528,30 +481,20 @@ export default function GestaoFuncionarios() {
                         <div>{func.cargo || '-'}</div>
                         <span className="text-[10px] text-slate-400">{func.setor}</span>
                       </td>
-                      <td className="py-3.5 px-4 font-mono text-slate-600">{func.contrato || '-'}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-700">{func.uf || '-'}</td>
                       <td className="py-3.5 px-4 text-slate-600">{formatarDataBR(func.data_admissao)}</td>
-                      <td className="py-3.5 px-4 text-slate-600">{formatarDataBR(func.data_demissao)}</td>
                       <td className="py-3.5 px-4">
                         <span className={`px-2.5 py-1 text-[11px] rounded-full font-bold border ${
-                          func.status === 'Ativo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                          func.status === 'Afastado' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                          'bg-red-50 text-red-600 border-red-200'
+                          func.status === 'Ativo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'
                         }`}>
                           {func.status || 'Ativo'}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1">
-                        <button
-                          onClick={() => prepararEdicao(func)}
-                          className="p-1.5 bg-slate-100 text-purple-700 rounded-xl hover:bg-purple-100 border border-slate-200"
-                        >
+                        <button onClick={() => prepararEdicao(func)} className="p-1.5 bg-slate-100 text-purple-700 rounded-xl">
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => moverParaLixeira(func.id)}
-                          className="p-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200"
-                        >
+                        <button onClick={() => moverParaLixeira(func.id)} className="p-1.5 bg-red-50 text-red-600 rounded-xl">
                           <Trash className="w-3.5 h-3.5" />
                         </button>
                       </td>
@@ -559,7 +502,7 @@ export default function GestaoFuncionarios() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="py-8 text-center text-slate-400">
+                    <td colSpan="6" className="py-8 text-center text-slate-400">
                       Nenhum funcionário encontrado.
                     </td>
                   </tr>
@@ -567,7 +510,6 @@ export default function GestaoFuncionarios() {
               </tbody>
             </table>
           </div>
-
         </div>
 
       </div>
