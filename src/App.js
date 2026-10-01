@@ -5,6 +5,7 @@ import LoginPage from './LoginPage';
 import Menu from './Menu';
 import AdminDevPage from './AdminDevPage';
 import FuncionariosPage from './FuncionariosPage'; // Tela de cadastro de funcionários
+import ContratosPage from './Contratospage'; // Tela de cadastro de contratos (nome do arquivo conforme o seu projeto)
 
 async function carregarPerfil(userId) {
   const { data: perfil, error } = await supabase
@@ -77,6 +78,7 @@ function PainelLayout({ userProfile, onLogout, onAbrirConsoleDev }) {
       {/* Conteúdo dinâmico de acordo com a aba selecionada no Menu */}
       <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         {activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
+        {activeTab === 'contratos' && <ContratosPage userProfile={userProfile} />}
       </main>
     </div>
   );

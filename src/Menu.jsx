@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Users, ChevronDown, ChevronRight, LogOut, 
-  FolderTree, Code, Menu as MenuIcon, X 
+  FolderTree, Code, Menu as MenuIcon, X, FileText 
 } from 'lucide-react';
 
 export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, abrirConsoleDev }) {
@@ -81,7 +81,7 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
                 )}
               </button>
 
-              {/* SUBMENU: FUNCIONÁRIOS */}
+              {/* SUBMENU: FUNCIONÁRIOS E CONTRATOS */}
               {menuCadastrosOpen && (
                 <div className="ml-4 pl-3 border-l-2 border-purple-100 mt-1 space-y-1">
                   <button
@@ -97,6 +97,21 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
                   >
                     <Users className="w-4 h-4" />
                     <span>Funcionários</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('contratos');
+                      setSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                      activeTab === 'contratos' 
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' 
+                        : 'text-slate-600 hover:bg-purple-50 hover:text-purple-700'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Contratos</span>
                   </button>
                 </div>
               )}
