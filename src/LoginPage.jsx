@@ -2,6 +2,22 @@ import React, { useState } from 'react';
 import { supabase } from './Admbases';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
+// Traduz os erros mais comuns do Supabase Auth para mensagens claras
+const traduzirErroLogin = (error) => {
+  const msg = error?.message || '';
+
+  if (msg === 'Invalid login credentials') return 'E-mail ou senha incorretos.';
+  if (msg === 'Email not confirmed') return 'E-mail ainda não confirmado. Verifique a caixa de entrada.';
+  if (error?.status === 429 || error?.code === 'over_request_rate_limit') {
+    return 'Muitas tentativas de acesso. Aguarde um instante e tente novamente.';
+  }
+  if (msg === 'Failed to fetch' || error?.name === 'AuthRetryableFetchError') {
+    return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
+  }
+
+  return msg || 'Erro ao realizar login.';
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -9,21 +25,32 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  const limparErro = () => {
+    if (errorMessage) setErrorMessage('');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (loading) return; // evita duplo envio (duplo clique / Enter repetido)
+
     setLoading(true);
     setErrorMessage('');
 
-    // O App detecta a sessão, carrega o perfil e redireciona conforme a role
-    // (super_dev -> /admin-dev, demais -> /dashboard).
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      // O App detecta a sessão, carrega o perfil e redireciona conforme a role
+      // (super_dev -> /admin-dev, demais -> /dashboard).
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
-    if (error) {
-      setErrorMessage(
-        error.message === 'Invalid login credentials'
-          ? 'E-mail ou senha incorretos.'
-          : error.message || 'Erro ao realizar login.'
-      );
+      if (error) {
+        setErrorMessage(traduzirErroLogin(error));
+        setLoading(false);
+      }
+    } catch (err) {
+      // Falha de rede/exceção: sem isso o botão ficava travado em "A verificar acesso..."
+      setErrorMessage(traduzirErroLogin(err));
       setLoading(false);
     }
   };
@@ -60,20 +87,23 @@ export default function LoginPage() {
             </div>
 
             {errorMessage && (
-              <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">
+              <div role="alert" className="p-3.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">
                 {errorMessage}
               </div>
             )}
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">E-mail</label>
+                <label htmlFor="login-email" className="text-xs font-semibold text-slate-600">E-mail</label>
                 <div className="relative">
                   <input
+                    id="login-email"
                     type="email"
                     required
+                    autoFocus
+                    autoComplete="username"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); limparErro(); }}
                     placeholder="matias@willtech7.com.br"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
                   />
@@ -82,20 +112,23 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-600">Senha</label>
+                <label htmlFor="login-password" className="text-xs font-semibold text-slate-600">Senha</label>
                 <div className="relative">
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => { setPassword(e.target.value); limparErro(); }}
                     placeholder="••••••••"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-11 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
                   />
                   <Lock className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
