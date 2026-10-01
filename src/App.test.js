@@ -46,7 +46,7 @@ test('sem sessão mostra a tela de login', async () => {
   expect(screen.getByText('Acessar Sistema')).toBeInTheDocument();
 });
 
-test('usuário de empresa vê o menu e o dashboard', async () => {
+test('usuário de empresa vê o menu e o menu', async () => {
   mockSession = sessao;
   mockTables = {
     perfis: [{ id: 'u1', nome: 'Maria', role: 'admin_empresa', empresa_id: 'e1', ativo: true }],
@@ -56,7 +56,7 @@ test('usuário de empresa vê o menu e o dashboard', async () => {
   expect(await screen.findByText('Painel Operacional')).toBeInTheDocument();
   expect(screen.getAllByText('Veículos').length).toBeGreaterThan(0);
   expect(screen.queryByText('Painel Admin Dev')).not.toBeInTheDocument();
-  expect(window.location.pathname).toBe('/dashboard');
+  expect(window.location.pathname).toBe('/menu');
 });
 
 test('super_dev é levado ao painel admin', async () => {
@@ -93,7 +93,7 @@ test('usuário comum não acessa /admin-dev', async () => {
   window.history.pushState({}, '', '/admin-dev');
   render(<App />);
   expect(await screen.findByText('Painel Operacional')).toBeInTheDocument();
-  expect(window.location.pathname).toBe('/dashboard');
+  expect(window.location.pathname).toBe('/menu');
 });
 
 test.each([

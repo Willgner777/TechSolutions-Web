@@ -78,7 +78,7 @@ export default function LoginPage() {
           redirecionarUsuario(perfil);
         } else {
           // Se não houver cadastro adicional, redireciona para a rota genérica
-          window.location.href = '/dashboard';
+          window.location.href = '/menu';
         }
       }
     } catch (err) {
@@ -97,11 +97,11 @@ export default function LoginPage() {
     } 
     // Se for colaborador/admin de uma empresa específica -> Tela da Empresa
     else if (perfil?.empresa_id) {
-      window.location.href = `/empresa/${perfil.empresa_id}`; // Ou `/dashboard?empresa=${perfil.empresa_id}`
+      window.location.href = `/empresa/${perfil.empresa_id}`; // Ou `/menu?empresa=${perfil.empresa_id}`
     } 
     // Fallback padrão
     else {
-      window.location.href = '/dashboard';
+      window.location.href = '/menu';
     }
   };
 
