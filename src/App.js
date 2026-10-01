@@ -119,8 +119,8 @@ export default function App() {
 
   if (loading) return <TelaCarregando />;
 
-  // Redireciona super_dev para admin-dev e utilizadores normais para o dashboard/início padrão
-  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
+  // Rota principal apontando exclusivamente para o admin-dev
+  const home = '/admin-dev';
 
   let conteudoAutenticado = null;
   if (session) {
