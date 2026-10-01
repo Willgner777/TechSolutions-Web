@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './Admbases';
 import { 
   ShieldCheck, Building2, Users, RefreshCw, Edit, Trash2, X, LogOut, Search,
-  UserCheck, UserX, Power, Briefcase, Mail, GitBranch, Trash, FileText
+  Power, GitBranch, Trash
 } from 'lucide-react';
 
 export default function AdminDevPage() {
-  const [activeTab, setActiveTab] = useState('usuarios'); // 'usuarios' | 'empresas' | 'lixeira'
+  const [activeTab, setActiveTab] = useState('empresas'); // 'usuarios' | 'empresas' | 'lixeira'
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ type: '', message: '' });
+  const [feedback, setFeedback] = useState({ type: 'success', message: 'Utilizador restaurado com sucesso!' });
 
   // ESTADOS: Empresas e Filiais
   const [empresas, setEmpresas] = useState([]);
@@ -23,15 +23,13 @@ export default function AdminDevPage() {
   // ESTADOS: Usuários / Funcionários
   const [usuarios, setUsuarios] = useState([]);
   const [usuariosLixeira, setUsuariosLixeira] = useState([]);
-  const [searchUsuario, setSearchUsuario] = useState('');
   const [editingUsuarioId, setEditingUsuarioId] = useState(null);
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [emailUsuario, setEmailUsuario] = useState('');
-  const [senhaUsuario, setSenhaUsuario] = useState('');
   const [ativoUsuario, setAtivoUsuario] = useState(true);
   const [roleUsuario, setRoleUsuario] = useState('super_dev');
   const [cargoUsuario, setCargoUsuario] = useState('');
-  const [contratoUsuario, setContratoUsuario] = useState(''); // Campo de Contrato
+  const [contratoUsuario, setContratoUsuario] = useState('');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
 
   useEffect(() => {
@@ -48,7 +46,7 @@ export default function AdminDevPage() {
     if (!manterFeedback) setFeedback({ type: '', message: '' });
 
     try {
-      // 1. Carregar Empresas Ativas
+      // 1. Carregar Empresas
       const { data: dataEmpresas, error: errEmpresas } = await supabase
         .from('empresas')
         .select('*')
@@ -57,7 +55,7 @@ export default function AdminDevPage() {
       if (errEmpresas) throw errEmpresas;
       setEmpresas(dataEmpresas || []);
 
-      // 2. Carregar Usuários Ativos
+      // 2. Carregar Usuários
       const { data: dataUsuarios, error: errUsuarios } = await supabase
         .from('perfis')
         .select('*')
@@ -65,7 +63,7 @@ export default function AdminDevPage() {
         .order('created_at', { ascending: false });
       if (errUsuarios) throw errUsuarios;
 
-      // 3. Carregar Lixeira de Usuários
+      // 3. Carregar Lixeira
       const { data: dataLixeira } = await supabase
         .from('perfis')
         .select('*')
@@ -88,15 +86,83 @@ export default function AdminDevPage() {
     }
   };
 
-  // --- MÉTODOS DE USUÁRIOS E FUNCIONÁRIOS ---
+  // --- MÉTODOS DE EMPRESAS ---
+  const limparFormEmpresa = () => {
+    setEditingEmpresaId(null);
+    setNomeEmpresa('');
+    setCnpjEmpresa('');
+    setUfEmpresa('SP');
+    setPlanoEmpresa('PRO');
+    setTipoEmpresa('MATRIZ');
+    setMatrizIdSelecionada('');
+  };
+
+  const prepararEdicaoEmpresa = (emp) => {
+    setEditingEmpresaId(emp.id);
+    setNomeEmpresa(emp.nome || emp.nome_fantasia || '');
+    setCnpjEmpresa(emp.cnpj || '');
+    setUfEmpresa(emp.uf || 'SP');
+    setPlanoEmpresa(emp.plano || 'PRO');
+    setTipoEmpresa(emp.matriz_id ? 'FILIAL' : 'MATRIZ');
+    setMatrizIdSelecionada(emp.matriz_id || '');
+  };
+
+  const salvarEmpresa = async (e) => {
+    e.preventDefault();
+    if (!nomeEmpresa.trim()) return setFeedback({ type: 'error', message: 'Insira o nome da empresa.' });
+
+    setLoading(true);
+    try {
+      const payload = {
+        nome: nomeEmpresa,
+        cnpj: cnpjEmpresa,
+        uf: ufEmpresa,
+        plano: planoEmpresa,
+        matriz_id: tipoEmpresa === 'FILIAL' ? (matrizIdSelecionada || null) : null,
+        ativo: true
+      };
+
+      if (editingEmpresaId) {
+        const { error } = await supabase.from('empresas').update(payload).eq('id', editingEmpresaId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('empresas').insert([payload]);
+        if (error) throw error;
+      }
+
+      setFeedback({ type: 'success', message: 'Empresa / Filial salva com sucesso!' });
+      limparFormEmpresa();
+      carregarDadosGlobais({ manterFeedback: true });
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'Erro ao salvar empresa: ' + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const excluirEmpresa = async (id) => {
+    if (!window.confirm('Excluir esta empresa/filial?')) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('empresas').delete().eq('id', id);
+      if (error) throw error;
+      setFeedback({ type: 'success', message: 'Empresa removida com sucesso!' });
+      carregarDadosGlobais({ manterFeedback: true });
+    } catch (err) {
+      setFeedback({ type: 'error', message: 'Erro ao excluir: ' + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- MÉTODOS DE USUÁRIOS ---
   const prepararEdicaoUsuario = (usr) => {
     setEditingUsuarioId(usr.id);
     setNomeUsuario(usr.nome || '');
     setEmailUsuario(usr.email || '');
-    setSenhaUsuario('');
     setAtivoUsuario(usr.ativo !== false);
     setRoleUsuario(usr.role || 'super_dev');
-    setCargoUsuario(usr.cargo || usr.cargo_nome || '');
+    setCargoUsuario(usr.cargo || '');
     setContratoUsuario(usr.contrato || '');
     setEmpresaIdSelecionada(usr.empresa_id || '');
   };
@@ -105,7 +171,6 @@ export default function AdminDevPage() {
     setEditingUsuarioId(null);
     setNomeUsuario('');
     setEmailUsuario('');
-    setSenhaUsuario('');
     setAtivoUsuario(true);
     setRoleUsuario('super_dev');
     setCargoUsuario('');
@@ -179,41 +244,7 @@ export default function AdminDevPage() {
     }
   };
 
-  // --- MÉTODOS DE EMPRESAS E FILIAIS ---
-  const salvarEmpresa = async (e) => {
-    e.preventDefault();
-    if (!nomeEmpresa.trim()) return setFeedback({ type: 'error', message: 'Insira o nome da empresa.' });
-
-    setLoading(true);
-    try {
-      const payload = {
-        nome: nomeEmpresa,
-        cnpj: cnpjEmpresa,
-        uf: ufEmpresa,
-        plano: planoEmpresa,
-        matriz_id: tipoEmpresa === 'FILIAL' ? (matrizIdSelecionada || null) : null,
-        ativo: true
-      };
-
-      if (editingEmpresaId) {
-        const { error } = await supabase.from('empresas').update(payload).eq('id', editingEmpresaId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('empresas').insert([payload]);
-        if (error) throw error;
-      }
-
-      setFeedback({ type: 'success', message: 'Empresa/Filial salva com sucesso!' });
-      setNomeEmpresa('');
-      setCnpjEmpresa('');
-      setEditingEmpresaId(null);
-      carregarDadosGlobais({ manterFeedback: true });
-    } catch (err) {
-      setFeedback({ type: 'error', message: 'Erro ao salvar empresa: ' + err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const empresasMatrizes = empresas.filter(e => !e.matriz_id);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 sm:p-8 lg:p-12">
@@ -243,7 +274,7 @@ export default function AdminDevPage() {
           </div>
         </div>
 
-        {/* MENSAGEM FEEDBACK */}
+        {/* FEEDBACK */}
         {feedback.message && (
           <div className={`p-4 rounded-2xl text-sm border flex items-center justify-between ${
             feedback.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
@@ -253,7 +284,7 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* NAVEGAÇÃO DE ABAS */}
+        {/* MUDANÇA DE ABAS */}
         <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
           <button
             onClick={() => setActiveTab('usuarios')}
@@ -286,8 +317,6 @@ export default function AdminDevPage() {
         {/* TAB 1: UTILIZADORES */}
         {activeTab === 'usuarios' && (
           <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
-            
-            {/* FORMULÁRIO DE EDIÇÃO */}
             {editingUsuarioId && (
               <form onSubmit={salvarUsuario} className="bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-5">
                 <h3 className="text-xs font-semibold text-purple-700 uppercase tracking-wider flex items-center gap-2">
@@ -341,7 +370,6 @@ export default function AdminDevPage() {
               </form>
             )}
 
-            {/* TABELA DE UTILIZADORES */}
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
@@ -372,7 +400,7 @@ export default function AdminDevPage() {
                         <button onClick={() => prepararEdicaoUsuario(usr)} className="p-2 bg-slate-100 text-purple-700 rounded-xl border border-slate-200">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button onClick={() => MoverParaLixeira(usr.id)} className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-200" title="Mover para Lixeira">
+                        <button onClick={() => MoverParaLixeira(usr.id)} className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-200">
                           <Trash className="w-4 h-4" />
                         </button>
                       </td>
@@ -380,6 +408,174 @@ export default function AdminDevPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: EMPRESAS & FILIAIS */}
+        {activeTab === 'empresas' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-4 bg-white border border-slate-200 p-6 rounded-3xl h-fit shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b pb-4 border-slate-100">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-purple-600" />
+                  {editingEmpresaId ? 'Editar Empresa / Filial' : 'Cadastrar Empresa / Filial'}
+                </h3>
+                {editingEmpresaId && (
+                  <button onClick={limparFormEmpresa} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                    <X className="w-3.5 h-3.5" /> Cancelar
+                  </button>
+                )}
+              </div>
+
+              <form onSubmit={salvarEmpresa} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Tipo de Cadastro</label>
+                  <select 
+                    value={tipoEmpresa} 
+                    onChange={(e) => setTipoEmpresa(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-purple-700"
+                  >
+                    <option value="MATRIZ">Empresa Mãe (Matriz)</option>
+                    <option value="FILIAL">Filial Vinculada</option>
+                  </select>
+                </div>
+
+                {tipoEmpresa === 'FILIAL' && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">Selecione a Empresa Mãe (Matriz)</label>
+                    <select 
+                      value={matrizIdSelecionada} 
+                      onChange={(e) => setMatrizIdSelecionada(e.target.value)}
+                      required
+                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                    >
+                      <option value="">Selecione uma Matriz...</option>
+                      {empresasMatrizes.map(m => (
+                        <option key={m.id} value={m.id}>{m.nome || m.nome_fantasia}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Razão Social / Nome Fantasia *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={nomeEmpresa} 
+                    onChange={(e) => setNomeEmpresa(e.target.value)} 
+                    placeholder="Ex: Transportadora K-Log Ltda"
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">CNPJ</label>
+                    <input 
+                      type="text" 
+                      value={cnpjEmpresa} 
+                      onChange={(e) => setCnpjEmpresa(e.target.value)} 
+                      placeholder="00.000.000/0001-00"
+                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600">UF (Estado)</label>
+                    <input 
+                      type="text" 
+                      value={ufEmpresa} 
+                      onChange={(e) => setUfEmpresa(e.target.value.toUpperCase())} 
+                      placeholder="SP"
+                      maxLength={2}
+                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Plano de Assinatura</label>
+                  <select 
+                    value={planoEmpresa} 
+                    onChange={(e) => setPlanoEmpresa(e.target.value)}
+                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                  >
+                    <option value="BASIC">BASIC (Até 5 veículos)</option>
+                    <option value="PRO">PRO (Até 20 veículos)</option>
+                    <option value="ENTERPRISE">ENTERPRISE (Ilimitado)</option>
+                  </select>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl text-xs"
+                >
+                  {editingEmpresaId ? 'Atualizar Registro' : 'Cadastrar Empresa / Filial'}
+                </button>
+              </form>
+            </div>
+
+            <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-purple-600" /> Empresas e Filiais Cadastradas
+              </h3>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
+                      <th className="py-3 px-4">Empresa / Unidade</th>
+                      <th className="py-3 px-4">CNPJ & UF</th>
+                      <th className="py-3 px-4">Estrutura</th>
+                      <th className="py-3 px-4">Plano</th>
+                      <th className="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {empresas.map(emp => {
+                      const ehFilial = !!emp.matriz_id;
+                      const empresaMae = ehFilial ? empresas.find(m => m.id === emp.matriz_id) : null;
+
+                      return (
+                        <tr key={emp.id} className="hover:bg-slate-50">
+                          <td className="py-3.5 px-4 font-bold text-slate-800">
+                            {emp.nome || emp.nome_fantasia}
+                            {ehFilial && (
+                              <p className="text-[10px] text-purple-600 font-normal flex items-center gap-1 mt-0.5">
+                                <GitBranch className="w-3 h-3" /> Filial de: {empresaMae?.nome || 'Matriz'}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600">
+                            <div>{emp.cnpj || 'Não informado'}</div>
+                            <span className="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded text-[10px] mt-0.5">
+                              {emp.uf || 'SP'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              ehFilial ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                            }`}>
+                              {ehFilial ? 'Filial' : 'Matriz Mãe'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-indigo-600">{emp.plano || 'PRO'}</td>
+                          <td className="py-3.5 px-4 text-right space-x-1">
+                            <button onClick={() => prepararEdicaoEmpresa(emp)} className="p-1.5 bg-slate-100 text-purple-700 rounded-lg">
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => excluirEmpresa(emp.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
