@@ -7,44 +7,92 @@ import {
   Search, ExternalLink, UserCheck, UserX, Clock, FileWarning
 } from 'lucide-react';
 
+// Interfaces de Tipagem
+interface Empresa {
+  id: string;
+  nome?: string;
+  nome_fantasia?: string;
+  cnpj?: string;
+  plano?: string;
+  ativo?: boolean;
+  created_at?: string;
+}
+
+interface Usuario {
+  id: string;
+  email: string;
+  nome?: string;
+  role: string;
+  empresa_id?: string | null;
+  ativo?: boolean;
+  empresas?: {
+    nome?: string;
+  } | null;
+}
+
+interface RLSStatus {
+  schemaname: string;
+  tablename: string;
+  rowsecurity: boolean;
+  policyname: string | null;
+  cmd: string | null;
+  permissive: string | null;
+}
+
 export default function AdminDevPage() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'empresas' | 'usuarios' | 'rls_health'
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ type: '', message: '' });
+  const [activeTab, setActiveTab] = useState<'overview' | 'empresas' | 'usuarios' | 'rls_health'>('overview');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error' | ''; message: string }>({ type: '', message: '' });
 
   // Estados Globais de Dados
-  const [empresas, setEmpresas] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [rlsStatus, setRlsStatus] = useState([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [rlsStatus, setRlsStatus] = useState<RLSStatus[]>([]);
   const [resumoAlertas, setResumoAlertas] = useState({ despesasPendentes: 0, docsVencidos: 0, avariasChecklist: 0 });
 
   // Filtros de Busca
-  const [searchEmpresa, setSearchEmpresa] = useState('');
-  const [searchUsuario, setSearchUsuario] = useState('');
+  const [searchEmpresa, setSearchEmpresa] = useState<string>('');
+  const [searchUsuario, setSearchUsuario] = useState<string>('');
 
   // Form States: Empresa
-  const [editingEmpresaId, setEditingEmpresaId] = useState(null);
-  const [nomeEmpresa, setNomeEmpresa] = useState('');
-  const [cnpjEmpresa, setCnpjEmpresa] = useState('');
-  const [planoEmpresa, setPlanoEmpresa] = useState('PRO');
+  const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
+  const [nomeEmpresa, setNomeEmpresa] = useState<string>('');
+  const [cnpjEmpresa, setCnpjEmpresa] = useState<string>('');
+  const [planoEmpresa, setPlanoEmpresa] = useState<string>('PRO');
 
   // Form States: Usuário
-  const [editingUsuarioId, setEditingUsuarioId] = useState(null);
-  const [nomeUsuario, setNomeUsuario] = useState('');
-  const [emailUsuario, setEmailUsuario] = useState('');
-  const [senhaUsuario, setSenhaUsuario] = useState('');
-  const [roleUsuario, setRoleUsuario] = useState('admin_empresa');
-  const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
+  const [editingUsuarioId, setEditingUsuarioId] = useState<string | null>(null);
+  const [nomeUsuario, setNomeUsuario] = useState<string>('');
+  const [emailUsuario, setEmailUsuario] = useState<string>('');
+  const [senhaUsuario, setSenhaUsuario] = useState<string>('');
+  const [roleUsuario, setRoleUsuario] = useState<string>('admin_empresa');
+  const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState<string>('');
 
   useEffect(() => {
     carregarDadosGlobais();
+
+    // Configuração do Supabase Realtime para escutar mudanças e reatualizar
+    const rlsChannel = supabase
+      .channel('realtime-rls-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        () => {
+          carregarDadosGlobais({ manterFeedback: true });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(rlsChannel);
+    };
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
-  const carregarDadosGlobais = async ({ manterFeedback = false } = {}) => {
+  const carregarDadosGlobais = async ({ manterFeedback = false }: { manterFeedback?: boolean } = {}) => {
     setLoading(true);
     if (!manterFeedback) setFeedback({ type: '', message: '' });
 
@@ -54,18 +102,21 @@ export default function AdminDevPage() {
         .from('empresas')
         .select('*')
         .order('created_at', { ascending: false });
+
       if (errEmpresas) throw errEmpresas;
-      setEmpresas(dataEmpresas || []);
+      const empresasData = (dataEmpresas || []) as Empresa[];
+      setEmpresas(empresasData);
 
       // 2. Carregar Perfis
       const { data: dataUsuarios, error: errUsuarios } = await supabase
         .from('perfis')
         .select('*')
         .order('created_at', { ascending: false });
+
       if (errUsuarios) throw errUsuarios;
 
-      const usuariosMapeados = (dataUsuarios || []).map(usr => {
-        const emp = (dataEmpresas || []).find(e => e.id === usr.empresa_id);
+      const usuariosMapeados: Usuario[] = (dataUsuarios || []).map((usr: any) => {
+        const emp = empresasData.find(e => e.id === usr.empresa_id);
         return {
           ...usr,
           empresas: emp ? { nome: emp.nome || emp.nome_fantasia } : null
@@ -73,7 +124,7 @@ export default function AdminDevPage() {
       });
       setUsuarios(usuariosMapeados);
 
-      // 3. Tentar carregar métricas de Alertas Globais (Se as tabelas existirem)
+      // 3. Carregar métricas de Alertas Globais
       try {
         const { count: countDespesas } = await supabase
           .from('despesas')
@@ -95,19 +146,21 @@ export default function AdminDevPage() {
           docsVencidos: countDocs || 0,
           avariasChecklist: countAvarias || 0
         });
-      } catch (errAlerts) {
+      } catch (errAlerts: any) {
         console.warn('Erro ao carregar métricas secundárias:', errAlerts.message);
       }
 
-      // 4. Checar Status de RLS via RPC (caso a função exista)
+      // 4. Execução da função SQL RPC dev_rls_status()
       try {
         const { data: rlsData, error: rlsErr } = await supabase.rpc('dev_rls_status');
-        if (!rlsErr && rlsData) setRlsStatus(rlsData);
-      } catch (e) {
-        // Fallback caso a procedure ainda não tenha sido rodada no SQL
+        if (!rlsErr && rlsData) {
+          setRlsStatus(rlsData as RLSStatus[]);
+        }
+      } catch (e: any) {
+        console.warn('Erro ao carregar dev_rls_status:', e.message);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       setFeedback({ type: 'error', message: 'Erro ao carregar dados: ' + err.message });
     } finally {
       setLoading(false);
@@ -115,7 +168,7 @@ export default function AdminDevPage() {
   };
 
   // --- HANDLERS DA EMPRESA ---
-  const handleSaveEmpresa = async (e) => {
+  const handleSaveEmpresa = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setFeedback({ type: '', message: '' });
@@ -140,14 +193,14 @@ export default function AdminDevPage() {
 
       resetEmpresaForm();
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err) {
+    } catch (err: any) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAtivoEmpresa = async (id, statusAtual) => {
+  const handleToggleAtivoEmpresa = async (id: string, statusAtual: boolean) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -156,16 +209,16 @@ export default function AdminDevPage() {
         .eq('id', id);
 
       if (error) throw error;
-      setFeedback({ type: 'success', message: `Status da empresa alterado com sucesso!` });
+      setFeedback({ type: 'success', message: 'Status da empresa alterado com sucesso!' });
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err) {
+    } catch (err: any) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditEmpresa = (emp) => {
+  const handleEditEmpresa = (emp: Empresa) => {
     setEditingEmpresaId(emp.id);
     setNomeEmpresa(emp.nome || emp.nome_fantasia || '');
     setCnpjEmpresa(emp.cnpj || '');
@@ -181,7 +234,7 @@ export default function AdminDevPage() {
   };
 
   // --- HANDLERS DO USUÁRIO ---
-  const handleSaveUsuario = async (e) => {
+  const handleSaveUsuario = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setFeedback({ type: '', message: '' });
@@ -226,14 +279,14 @@ export default function AdminDevPage() {
 
       resetUsuarioForm();
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err) {
+    } catch (err: any) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleAtivoUsuario = async (id, statusAtual) => {
+  const handleToggleAtivoUsuario = async (id: string, statusAtual: boolean) => {
     setLoading(true);
     try {
       const { error } = await supabase
@@ -242,16 +295,16 @@ export default function AdminDevPage() {
         .eq('id', id);
 
       if (error) throw error;
-      setFeedback({ type: 'success', message: `Acesso do usuário alterado!` });
+      setFeedback({ type: 'success', message: 'Acesso do usuário alterado!' });
       carregarDadosGlobais({ manterFeedback: true });
-    } catch (err) {
+    } catch (err: any) {
       setFeedback({ type: 'error', message: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditUsuario = (usr) => {
+  const handleEditUsuario = (usr: Usuario) => {
     setEditingUsuarioId(usr.id);
     setNomeUsuario(usr.nome || '');
     setEmailUsuario(usr.email || '');
@@ -415,7 +468,7 @@ export default function AdminDevPage() {
         )}
 
         {/* 4. TABS NAVEGAÇÃO */}
-        <div className="flex border-b border-slate-200 mb-6 gap-2">
+        <div className="flex border-b border-slate-200 mb-6 gap-2 overflow-x-auto">
           {[
             { id: 'overview', label: 'Visão Geral do Ecossistema', icon: Activity },
             { id: 'empresas', label: 'Gestão de Tenants (Empresas)', icon: Building2 },
@@ -426,8 +479,8 @@ export default function AdminDevPage() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 pb-3 px-4 font-semibold text-xs sm:text-sm transition-all border-b-2 cursor-pointer ${
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-2 pb-3 px-4 font-semibold text-xs sm:text-sm transition-all border-b-2 cursor-pointer whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50 rounded-t-lg'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -474,7 +527,7 @@ export default function AdminDevPage() {
                         </span>
                         <button 
                           onClick={() => handleEditEmpresa(emp)}
-                          className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 text-xs"
+                          className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-0.5 text-xs cursor-pointer"
                         >
                           Gerenciar <ArrowUpRight className="w-3 h-3" />
                         </button>
@@ -497,7 +550,7 @@ export default function AdminDevPage() {
                   {editingEmpresaId ? 'Editar Tenant' : 'Cadastrar Novo Tenant'}
                 </h3>
                 {editingEmpresaId && (
-                  <button onClick={resetEmpresaForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                  <button onClick={resetEmpresaForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer">
                     <X className="w-3.5 h-3.5" /> Cancelar
                   </button>
                 )}
@@ -601,7 +654,7 @@ export default function AdminDevPage() {
                         </td>
                         <td className="p-3 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleEditEmpresa(emp)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">
+                            <button onClick={() => handleEditEmpresa(emp)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -625,7 +678,7 @@ export default function AdminDevPage() {
                   {editingUsuarioId ? 'Editar Perfil' : 'Criar Novo Usuário'}
                 </h3>
                 {editingUsuarioId && (
-                  <button onClick={resetUsuarioForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                  <button onClick={resetUsuarioForm} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 cursor-pointer">
                     <X className="w-3.5 h-3.5" /> Cancelar
                   </button>
                 )}
@@ -707,14 +760,14 @@ export default function AdminDevPage() {
                   disabled={loading}
                   className="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition-all cursor-pointer"
                 >
-                  {loading ? 'Salvando...' : editingUsuarioId ? 'Atualizar Perfil' : 'Cadastrar Usuário'}
+                  {loading ? 'Salvando...' : editingUsuarioId ? 'Atualizar Perfil' : 'Criar Usuário'}
                 </button>
               </form>
             </div>
 
             <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                <h3 className="text-sm font-bold text-slate-900">Usuários Cadastrados</h3>
+                <h3 className="text-sm font-bold text-slate-900">Perfis Cadastrados</h3>
                 <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                   <input
@@ -731,9 +784,9 @@ export default function AdminDevPage() {
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-100 text-[10px] font-mono text-slate-500 uppercase">
                     <tr>
-                      <th className="p-3 rounded-l-xl">Nome / E-mail</th>
-                      <th className="p-3">Role</th>
-                      <th className="p-3">Tenant Vinculado</th>
+                      <th className="p-3 rounded-l-xl">Usuário / Email</th>
+                      <th className="p-3">Empresa</th>
+                      <th className="p-3">Permissão</th>
                       <th className="p-3">Status</th>
                       <th className="p-3 text-right rounded-r-xl">Ações</th>
                     </tr>
@@ -742,39 +795,37 @@ export default function AdminDevPage() {
                     {usuariosFiltrados.map((usr) => (
                       <tr key={usr.id} className="hover:bg-slate-50 transition-all">
                         <td className="p-3">
-                          <p className="font-semibold text-slate-900">{usr.nome || 'Sem Nome'}</p>
-                          <p className="text-[10px] font-mono text-slate-500">{usr.email}</p>
+                          <div className="font-semibold text-slate-900">{usr.nome || 'Sem Nome'}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{usr.email}</div>
+                        </td>
+                        <td className="p-3 font-medium text-slate-600">
+                          {usr.empresas?.nome || (usr.role === 'super_dev' ? 'Acesso Global' : '-')}
                         </td>
                         <td className="p-3">
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                            usr.role === 'super_dev' 
-                              ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                            usr.role === 'super_dev'
+                              ? 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
                           }`}>
                             {usr.role}
                           </span>
-                        </td>
-                        <td className="p-3 text-slate-600">
-                          {usr.empresas?.nome || (usr.role === 'super_dev' ? 'Acesso Global' : 'Sem Empresa')}
                         </td>
                         <td className="p-3">
                           <button
                             onClick={() => handleToggleAtivoUsuario(usr.id, usr.ativo !== false)}
                             className={`cursor-pointer px-2 py-0.5 rounded text-[10px] font-mono border ${
                               usr.ativo !== false 
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700' 
-                                : 'bg-red-50 border-red-300 text-red-700'
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' 
+                                : 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
                             }`}
                           >
-                            {usr.ativo !== false ? 'ATIVO' : 'BLOQUEADO'}
+                            {usr.ativo !== false ? 'ATIVO' : 'INATIVO'}
                           </button>
                         </td>
                         <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => handleEditUsuario(usr)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          <button onClick={() => handleEditUsuario(usr)} className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer">
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -785,52 +836,72 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* TAB 4: RLS HEALTH & SEGURANÇA */}
+        {/* TAB 4: SEGURANÇA & RLS HEALTH / AUDITORIA */}
         {activeTab === 'rls_health' && (
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <h3 className="text-base font-bold text-slate-900 mb-2 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" /> Auditoria RLS (Row Level Security)
-            </h3>
-            <p className="text-xs text-slate-500 mb-6">
-              Esta visão valida se as políticas de isolamento de banco de dados estão ativas e protegendo as tabelas contra vazamentos entre empresas.
-            </p>
+          <div className="bg-white border border-slate-200 p-6 rounded-3xl shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                  Auditoria RLS (Row Level Security)
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Valida se as políticas de isolamento de banco de dados estão ativas e protegendo as tabelas contra vazamentos entre empresas.
+                </p>
+              </div>
+              <button
+                onClick={() => carregarDadosGlobais()}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold border border-indigo-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Sincronizar
+              </button>
+            </div>
 
-            {rlsStatus.length > 0 ? (
+            {rlsStatus.length === 0 ? (
+              <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center">
+                <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-700">Nenhum dado de auditoria localizado.</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Certifique-se de que executou a função SQL <code className="font-mono text-indigo-600">dev_rls_status()</code> no PostgreSQL.
+                </p>
+              </div>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-700">
                   <thead className="bg-slate-100 text-[10px] font-mono text-slate-500 uppercase">
                     <tr>
                       <th className="p-3 rounded-l-xl">Tabela do Schema</th>
-                      <th className="p-3">Status RLS</th>
+                      <th className="p-3 text-center">Status RLS</th>
                       <th className="p-3">Policies Configuradas</th>
+                      <th className="p-3 text-right rounded-r-xl">Comando</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {rlsStatus.map((item) => (
-                      <tr key={item.tabela}>
-                        <td className="p-3 font-mono font-semibold text-indigo-700">{item.tabela}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                            item.rls_ativo 
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-700' 
-                              : 'bg-red-50 border-red-300 text-red-700'
-                          }`}>
-                            {item.rls_ativo ? 'RLS HABILITADO' : 'DESABILITADO'}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono text-slate-500">{item.qtd_policies} política(s)</td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-slate-200 font-mono text-[11px]">
+                    {rlsStatus.map((row, idx) => {
+                      const isEnabled = Boolean(row.rowsecurity);
+                      return (
+                        <tr key={`${row.tablename}-${row.policyname}-${idx}`} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-slate-900">{row.tablename}</td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold border ${
+                              isEnabled 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+                                : 'bg-red-50 text-red-700 border-red-300'
+                            }`}>
+                              {isEnabled ? 'HABILITADO' : 'DESABILITADO'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-600">
+                            {row.policyname || <span className="text-slate-400 italic">Nenhuma política atribuída</span>}
+                          </td>
+                          <td className="p-3 text-right text-indigo-600 font-semibold">
+                            {row.cmd || 'ALL'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
-              </div>
-            ) : (
-              <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl text-center">
-                <Lock className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-700">Verificação Automática de RLS</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                  Para habilitar o monitoramento em tempo real do RLS nesta aba, crie a função SQL <code className="text-indigo-600 font-mono">dev_rls_status()</code> no PostgreSQL do Supabase.
-                </p>
               </div>
             )}
           </div>
