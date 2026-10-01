@@ -32,7 +32,7 @@ export default function AdminDevPage() {
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [emailUsuario, setEmailUsuario] = useState('');
   const [senhaUsuario, setSenhaUsuario] = useState('');
-  const [ativoUsuario, setAtivoUsuario] = useState(true); // Status Ativo/Inativo
+  const [ativoUsuario, setAtivoUsuario] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [roleUsuario, setRoleUsuario] = useState('admin_empresa');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
@@ -41,7 +41,7 @@ export default function AdminDevPage() {
     carregarDadosGlobais();
   }, []);
 
-  // Logout com redirecionamento para login
+  // Logout com redirecionamento
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -101,7 +101,7 @@ export default function AdminDevPage() {
           avariasChecklist: countAvarias || 0
         });
       } catch (errAlertas) {
-        // Silencia se tabelas auxiliares não existirem
+        // Silencia erros se tabelas não existirem
       }
 
     } catch (err) {
@@ -258,7 +258,7 @@ export default function AdminDevPage() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 sm:p-8 lg:p-12">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* CABEÇALHO BRANCO COM LILÁS */}
+        {/* CABEÇALHO */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl gap-6 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
@@ -296,7 +296,7 @@ export default function AdminDevPage() {
           </div>
         </div>
 
-        {/* MENSAGENS DE FEEDBACK */}
+        {/* FEEDBACK */}
         {feedback.message && (
           <div className={`p-4 rounded-2xl text-sm border flex items-center justify-between transition-all ${
             feedback.type === 'error' 
@@ -310,7 +310,7 @@ export default function AdminDevPage() {
           </div>
         )}
 
-        {/* ABAS DE NAVEGAÇÃO INTERNA */}
+        {/* NAVEGAÇÃO DE ABAS */}
         <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
           <button
             onClick={() => setActiveTab('overview')}
@@ -361,7 +361,7 @@ export default function AdminDevPage() {
           </button>
         </div>
 
-        {/* CONTAINER CONTEÚDO PRINCIPAL */}
+        {/* CONTEÚDO PRINCIPAL */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
           
           {/* ABA 1: OVERVIEW */}
@@ -562,7 +562,7 @@ export default function AdminDevPage() {
                 </div>
               </div>
 
-              {/* FORMULÁRIO DE EDIÇÃO COM STATUS E SENHA */}
+              {/* FORMULÁRIO DE EDIÇÃO */}
               {editingUsuarioId && (
                 <form onSubmit={salvarUsuario} className="bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-5">
                   <div className="flex items-center justify-between">
@@ -641,7 +641,6 @@ export default function AdminDevPage() {
                       </select>
                     </div>
 
-                    {/* STATUS DE ATIVO / INATIVO REFORMULADO E PROFISSIONAL */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold text-slate-600">Status de Acesso</label>
                       <button
@@ -713,8 +712,6 @@ export default function AdminDevPage() {
                           </span>
                         </td>
                         <td className="py-4 px-5 text-slate-600">{usr.empresas?.nome || 'Global'}</td>
-                        
-                        {/* COLUNA DE STATUS PROFISSIONAL */}
                         <td className="py-4 px-5">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-full font-semibold border ${
                             usr.ativo !== false 
@@ -725,7 +722,6 @@ export default function AdminDevPage() {
                             {usr.ativo !== false ? 'Ativo' : 'Inativo'}
                           </span>
                         </td>
-
                         <td className="py-4 px-5 text-right flex items-center justify-end gap-2">
                           <button 
                             onClick={() => prepararEdicaoUsuario(usr)}
