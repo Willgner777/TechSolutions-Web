@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, criarClienteIsolado } from './Admbases';
 import { 
   Building2, Users, ShieldCheck, Plus, RefreshCw, 
-  CheckCircle2, AlertCircle, Database, Edit, Trash2, X
+  CheckCircle2, AlertCircle, Database, Edit, Trash2, X, LogOut
 } from 'lucide-react';
 
 export default function AdminDevPage() {
@@ -31,6 +31,10 @@ export default function AdminDevPage() {
   useEffect(() => {
     carregarDadosGlobais();
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const carregarDadosGlobais = async () => {
     setLoading(true);
@@ -64,7 +68,7 @@ export default function AdminDevPage() {
 
     } catch (err) {
       setFeedback({ type: 'error', message: 'Erro ao carregar dados: ' + err.message });
-    } finally {
+    } fontally {
       setLoading(false);
     }
   };
@@ -152,7 +156,6 @@ export default function AdminDevPage() {
         if (error) throw error;
         setFeedback({ type: 'success', message: 'Perfil do usuário atualizado!' });
       } else {
-        // Cliente isolado: o signUp do cliente principal trocaria a sessão do admin pela do novo usuário.
         const { data: authData, error: authError } = await criarClienteIsolado().auth.signUp({
           email: emailUsuario,
           password: senhaUsuario,
@@ -230,14 +233,24 @@ export default function AdminDevPage() {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-800 mt-1">Gestão da Plataforma Multi-tenant</h1>
         </div>
 
-        <button
-          onClick={carregarDadosGlobais}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold border border-slate-300 transition-all cursor-pointer"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar Dados
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={carregarDadosGlobais}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-semibold border border-slate-300 transition-all cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar Dados
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-semibold border border-red-200 transition-all cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
+        </div>
       </div>
 
       {/* DASHBOARD CARDS */}
