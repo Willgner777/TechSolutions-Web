@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from './Admbases';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
-// Traduz os erros mais comuns do Supabase Auth para mensagens claras
 const traduzirErroLogin = (error) => {
   const msg = error?.message || '';
 
@@ -31,13 +30,12 @@ export default function LoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (loading) return; // evita duplo envio
+    if (loading) return;
 
     setLoading(true);
     setErrorMessage('');
 
     try {
-      // 1. Autenticação básica via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -52,7 +50,6 @@ export default function LoginPage() {
       const user = authData?.user;
 
       if (user) {
-        // 2. Busca o perfil e a empresa vinculada ao usuário logado na tabela 'perfis'
         const { data: perfil, error: perfilError } = await supabase
           .from('perfis')
           .select('role, empresa_id')
@@ -66,8 +63,8 @@ export default function LoginPage() {
         if (perfil) {
           redirecionarUsuario(perfil);
         } else {
-          // Fallback caso o usuário autenticado não tenha registro na tabela perfis
-          window.location.href = '/menu-inicial';
+          // Fallback caso não encontre perfil
+          window.location.href = '/dashboard';
         }
       }
     } catch (err) {
@@ -76,21 +73,15 @@ export default function LoginPage() {
     }
   };
 
-  // Função para direcionar a rota conforme a Role e a Empresa cadastrada
   const redirecionarUsuario = (perfil) => {
     const roleNormalized = perfil?.role?.toLowerCase() || '';
 
-    // Se for superdev / super_dev / admin_global -> Tela de Dev
     if (roleNormalized === 'superdev' || roleNormalized === 'super_dev' || roleNormalized === 'admin_global') {
       window.location.href = '/admin-dev';
-    } 
-    // Se for colaborador/admin de uma empresa específica -> Tela/Menu da Empresa
-    else if (perfil?.empresa_id) {
-      window.location.href = `/menu-inicial?empresa=${perfil.empresa_id}`;
-    } 
-    // Fallback padrão
-    else {
-      window.location.href = '/menu-inicial';
+    } else if (perfil?.empresa_id) {
+      window.location.href = `/dashboard?empresa=${perfil.empresa_id}`;
+    } else {
+      window.location.href = '/dashboard';
     }
   };
 
