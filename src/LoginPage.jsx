@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from './Admbases';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
-// Traduz os erros mais comuns do Supabase Auth para mensagens claras
 const traduzirErroLogin = (error) => {
   const msg = error?.message || '';
 
@@ -31,13 +30,12 @@ export default function LoginPage() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (loading) return; // evita duplo envio (duplo clique / Enter repetido)
+    if (loading) return;
 
     setLoading(true);
     setErrorMessage('');
 
     try {
-      // 1. Autenticação básica via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -52,33 +50,20 @@ export default function LoginPage() {
       const user = authData?.user;
 
       if (user) {
-        // 2. Busca o perfil e a empresa vinculada ao usuário logado
         const { data: perfil, error: perfilError } = await supabase
-          .from('usuarios') // Ajuste o nome da tabela se for 'profiles' ou 'funcionarios'
+          .from('perfis')
           .select('role, empresa_id')
-          .eq('email', user.email)
-          .single();
+          .eq('id', user.id)
+          .maybeSingle();
 
         if (perfilError) {
-          console.error('Erro ao buscar dados do usuário:', perfilError);
-          // Caso a busca por e-mail falhe, tenta buscar pelo ID de autenticação
-          const { data: perfilById } = await supabase
-            .from('usuarios')
-            .select('role, empresa_id')
-            .eq('id', user.id)
-            .single();
-
-          if (perfilById) {
-            redirecionarUsuario(perfilById);
-            return;
-          }
+          console.error('Erro ao buscar dados do perfil:', perfilError);
         }
 
         if (perfil) {
           redirecionarUsuario(perfil);
         } else {
-          // Se não houver cadastro adicional, redireciona para a rota genérica
-          window.location.href = '/dashboard';
+          window.location.href = '/menu-inicial';
         }
       }
     } catch (err) {
@@ -87,21 +72,13 @@ export default function LoginPage() {
     }
   };
 
-  // Função para direcionar a rota conforme a Role e Empresa
   const redirecionarUsuario = (perfil) => {
     const roleNormalized = perfil?.role?.toLowerCase() || '';
 
-    // Se for superdev / super_dev -> Tela de Dev
-    if (roleNormalized === 'superdev' || roleNormalized === 'super_dev' || roleNormalized === 'admin_global') {
+    if (roleNormalized === 'super_dev' || roleNormalized === 'superdev' || roleNormalized === 'admin_global') {
       window.location.href = '/admin-dev';
-    } 
-    // Se for colaborador/admin de uma empresa específica -> Tela da Empresa
-    else if (perfil?.empresa_id) {
-      window.location.href = `/empresa/${perfil.empresa_id}`; // Ou `/dashboard?empresa=${perfil.empresa_id}`
-    } 
-    // Fallback padrão
-    else {
-      window.location.href = '/dashboard';
+    } else {
+      window.location.href = '/menu-inicial';
     }
   };
 
@@ -109,13 +86,12 @@ export default function LoginPage() {
     <div className="min-h-screen w-full bg-white flex font-sans overflow-hidden">
       <div className="w-full min-h-screen flex flex-col md:flex-row">
         
-        {/* LADO ESQUERDO */}
         <div className="hidden md:flex md:w-1/2 lg:w-5/12 bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-950 p-8 lg:p-12 flex-col justify-between relative overflow-hidden shrink-0">
           <div className="relative z-10 flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
-              <span className="text-white font-black text-xl tracking-tighter">K</span>
+              <span className="text-white font-black text-xl tracking-tighter">W</span>
             </div>
-            <span className="text-white font-bold text-xl tracking-wide">LOGÍSTICA</span>
+            <span className="text-white font-bold text-xl tracking-wide">WILLTECH</span>
           </div>
 
           <div className="relative z-10 my-auto py-8 flex flex-col items-center text-center">
@@ -127,7 +103,6 @@ export default function LoginPage() {
           <div className="relative z-10 text-xs text-purple-300/50">© 2026 Todos os direitos reservados.</div>
         </div>
 
-        {/* LADO DIREITO */}
         <div className="w-full md:w-1/2 lg:w-7/12 bg-white p-6 sm:p-12 lg:p-16 flex flex-col justify-center min-h-screen md:min-h-0">
           <div className="max-w-md w-full mx-auto space-y-6">
             
@@ -154,7 +129,7 @@ export default function LoginPage() {
                     autoComplete="username"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); limparErro(); }}
-                    placeholder="matias@willtech7.com.br"
+                    placeholder="seu@email.com"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-sm text-slate-800 focus:outline-none focus:border-purple-500"
                   />
                   <Mail className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
