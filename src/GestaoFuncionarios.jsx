@@ -88,15 +88,17 @@ export default function GestaoFuncionarios() {
 
       setEmpresaId(perfil.empresa_id);
 
-      // Buscar contratos se existirem
+      // Buscar contratos da empresa
       try {
         const { data: dataContratos } = await supabase
           .from('contratos')
-          .select('id, nome, codigo')
-          .eq('empresa_id', perfil.empresa_id);
+          .select('id, nome_contrato, estado_uf')
+          .eq('empresa_id', perfil.empresa_id)
+          .is('deleted_at', null)
+          .order('nome_contrato', { ascending: true });
         if (dataContratos) setContratos(dataContratos);
       } catch (e) {
-        // Tabela ainda não existente
+        // Falha ao buscar contratos
       }
 
       // Buscar funcionários
@@ -355,26 +357,18 @@ export default function GestaoFuncionarios() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Contrato Vinculado</label>
-                {contratos.length > 0 ? (
-                  <select
-                    value={contrato}
-                    onChange={(e) => setContrato(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
-                  >
-                    <option value="">Selecione um contrato...</option>
-                    {contratos.map(c => (
-                      <option key={c.id} value={c.nome || c.codigo}>{c.nome || c.codigo}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={contrato}
-                    onChange={(e) => setContrato(e.target.value)}
-                    placeholder="Ex: Contrato Tech 1"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
-                  />
-                )}
+                <select
+                  value={contrato}
+                  onChange={(e) => setContrato(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
+                >
+                  <option value="">Selecione um contrato...</option>
+                  {contratos.map(c => (
+                    <option key={c.id} value={c.nome_contrato}>
+                      {c.nome_contrato}{c.estado_uf ? ` - ${c.estado_uf}` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
