@@ -17,6 +17,7 @@ export default function AdminDevPage() {
   // ESTADOS: Empresas e Filiais
   const [empresas, setEmpresas] = useState([]);
   const [empresasLixeira, setEmpresasLixeira] = useState([]);
+  const [exibirFormEmpresa, setExibirFormEmpresa] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState(null);
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [cnpjEmpresa, setCnpjEmpresa] = useState('');
@@ -28,6 +29,7 @@ export default function AdminDevPage() {
   // ESTADOS: Contratos
   const [contratos, setContratos] = useState([]);
   const [contratosLixeira, setContratosLixeira] = useState([]);
+  const [exibirFormContrato, setExibirFormContrato] = useState(false);
   const [editingContratoId, setEditingContratoId] = useState(null);
   const [nomeContrato, setNomeContrato] = useState('');
   const [ufContrato, setUfContrato] = useState('');
@@ -192,6 +194,7 @@ export default function AdminDevPage() {
     setPlanoEmpresa('PRO');
     setTipoEmpresa('MATRIZ');
     setMatrizIdSelecionada('');
+    setExibirFormEmpresa(false);
   };
 
   const prepararEdicaoEmpresa = (emp) => {
@@ -202,6 +205,8 @@ export default function AdminDevPage() {
     setPlanoEmpresa(emp.plano || 'PRO');
     setTipoEmpresa(emp.matriz_id ? 'FILIAL' : 'MATRIZ');
     setMatrizIdSelecionada(emp.matriz_id || '');
+    setExibirFormEmpresa(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const salvarEmpresa = async (e) => {
@@ -266,6 +271,7 @@ export default function AdminDevPage() {
     setNomeContrato('');
     setUfContrato('');
     setEmpresaContratoId('');
+    setExibirFormContrato(false);
   };
 
   const prepararEdicaoContrato = (c) => {
@@ -273,6 +279,8 @@ export default function AdminDevPage() {
     setNomeContrato(c.nome_contrato || '');
     setUfContrato(c.estado_uf || '');
     setEmpresaContratoId(c.empresa_id || '');
+    setExibirFormContrato(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const salvarContrato = async (e) => {
@@ -851,337 +859,377 @@ export default function AdminDevPage() {
 
         {/* TAB 2: EMPRESAS & FILIAIS */}
         {activeTab === 'empresas' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-4 bg-white border border-slate-200 p-6 rounded-3xl h-fit shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b pb-4 border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-purple-600" />
-                  {editingEmpresaId ? 'Editar Empresa / Filial' : 'Cadastrar Empresa / Filial'}
-                </h3>
-                {editingEmpresaId && (
-                  <button onClick={limparFormEmpresa} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
-                    <X className="w-3.5 h-3.5" /> Cancelar
-                  </button>
-                )}
-              </div>
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
 
-              <form onSubmit={salvarEmpresa} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Tipo de Cadastro</label>
-                  <select 
-                    value={tipoEmpresa} 
-                    onChange={(e) => setTipoEmpresa(e.target.value)}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold text-purple-700"
-                  >
-                    <option value="MATRIZ">Empresa Mãe (Matriz)</option>
-                    <option value="FILIAL">Filial Vinculada</option>
-                  </select>
+            {/* BOTÃO PARA ABRIR O FORMULÁRIO */}
+            {!exibirFormEmpresa && (
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-900">Empresas e Filiais Cadastradas</h3>
+                <button
+                  onClick={() => {
+                    limparFormEmpresa();
+                    setExibirFormEmpresa(true);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold hover:bg-purple-700 transition"
+                >
+                  <Building2 className="w-4 h-4" /> Nova Empresa / Filial
+                </button>
+              </div>
+            )}
+
+            {/* FORMULÁRIO DE CADASTRO / EDIÇÃO */}
+            {exibirFormEmpresa && (
+              <form onSubmit={salvarEmpresa} className="bg-slate-50 border border-slate-200 p-6 rounded-2xl space-y-5">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-600" />
+                    {editingEmpresaId ? 'Editar Empresa / Filial' : 'Cadastrar Empresa / Filial'}
+                  </h3>
+                  <button type="button" onClick={limparFormEmpresa} className="text-slate-500 hover:text-slate-800">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
 
-                {tipoEmpresa === 'FILIAL' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   <div>
-                    <label className="text-xs font-semibold text-slate-600">Selecione a Empresa Mãe (Matriz)</label>
+                    <label className="block text-xs font-semibold text-slate-600">Tipo de Cadastro</label>
                     <select 
-                      value={matrizIdSelecionada} 
-                      onChange={(e) => setMatrizIdSelecionada(e.target.value)}
-                      required
-                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                      value={tipoEmpresa} 
+                      onChange={(e) => setTipoEmpresa(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold text-purple-700"
                     >
-                      <option value="">Selecione uma Matriz...</option>
-                      {empresasMatrizes.filter(m => m.id !== editingEmpresaId).map(m => (
-                        <option key={m.id} value={m.id}>{m.nome || m.nome_fantasia}</option>
-                      ))}
+                      <option value="MATRIZ">Empresa Mãe (Matriz)</option>
+                      <option value="FILIAL">Filial Vinculada</option>
                     </select>
                   </div>
-                )}
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Razão Social / Nome Fantasia *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={nomeEmpresa} 
-                    onChange={(e) => setNomeEmpresa(e.target.value)} 
-                    placeholder="Ex: Transportadora K-Log Ltda"
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
-                  />
-                </div>
+                  {tipoEmpresa === 'FILIAL' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-600">Selecione a Empresa Mãe (Matriz)</label>
+                      <select 
+                        value={matrizIdSelecionada} 
+                        onChange={(e) => setMatrizIdSelecionada(e.target.value)}
+                        required
+                        className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800"
+                      >
+                        <option value="">Selecione uma Matriz...</option>
+                        {empresasMatrizes.filter(m => m.id !== editingEmpresaId).map(m => (
+                          <option key={m.id} value={m.id}>{m.nome || m.nome_fantasia}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-slate-600">CNPJ</label>
+                    <label className="block text-xs font-semibold text-slate-600">Razão Social / Nome Fantasia *</label>
+                    <input 
+                      type="text" 
+                      required 
+                      value={nomeEmpresa} 
+                      onChange={(e) => setNomeEmpresa(e.target.value)} 
+                      placeholder="Ex: Transportadora K-Log Ltda"
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">CNPJ</label>
                     <input 
                       type="text" 
                       value={cnpjEmpresa} 
                       onChange={(e) => setCnpjEmpresa(e.target.value)} 
                       placeholder="00.000.000/0001-00"
-                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800"
                     />
                   </div>
+
                   <div>
-                    <label className="text-xs font-semibold text-slate-600">UF (Estado)</label>
+                    <label className="block text-xs font-semibold text-slate-600">UF (Estado)</label>
                     <input 
                       type="text" 
                       value={ufEmpresa} 
                       onChange={(e) => setUfEmpresa(e.target.value.toUpperCase())} 
                       placeholder="SP"
                       maxLength={2}
-                      className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 font-bold"
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 font-bold"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Plano de Assinatura</label>
+                    <select 
+                      value={planoEmpresa} 
+                      onChange={(e) => setPlanoEmpresa(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800"
+                    >
+                      <option value="BASIC">BASIC (Até 5 veículos)</option>
+                      <option value="PRO">PRO (Até 20 veículos)</option>
+                      <option value="ENTERPRISE">ENTERPRISE (Ilimitado)</option>
+                    </select>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Plano de Assinatura</label>
-                  <select 
-                    value={planoEmpresa} 
-                    onChange={(e) => setPlanoEmpresa(e.target.value)}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
-                  >
-                    <option value="BASIC">BASIC (Até 5 veículos)</option>
-                    <option value="PRO">PRO (Até 20 veículos)</option>
-                    <option value="ENTERPRISE">ENTERPRISE (Ilimitado)</option>
-                  </select>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={limparFormEmpresa} className="px-5 py-2.5 bg-slate-200 text-slate-700 rounded-2xl text-sm font-semibold">Cancelar</button>
+                  <button type="submit" disabled={loading} className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold">
+                    {editingEmpresaId ? 'Atualizar Registro' : 'Cadastrar Empresa / Filial'}
+                  </button>
                 </div>
-
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl text-xs cursor-pointer"
-                >
-                  {editingEmpresaId ? 'Atualizar Registro' : 'Cadastrar Empresa / Filial'}
-                </button>
               </form>
-            </div>
+            )}
 
-            <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-purple-600" /> Empresas e Filiais Cadastradas
-              </h3>
+            {/* TABELA DE EMPRESAS */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs uppercase">
+                    <th className="py-4 px-5">Empresa / Unidade</th>
+                    <th className="py-4 px-5">CNPJ / UF</th>
+                    <th className="py-4 px-5">Plano</th>
+                    <th className="py-4 px-5">Vínculos</th>
+                    <th className="py-4 px-5">Status</th>
+                    <th className="py-4 px-5 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {empresas.length > 0 ? empresas.map(emp => {
+                    const ehFilial = !!emp.matriz_id;
+                    const empresaMae = ehFilial ? empresas.find(m => m.id === emp.matriz_id) : null;
+                    const empAtiva = emp.ativo !== false;
+                    const qtdUsuarios = usuarios.filter(u => u.empresa_id === emp.id).length;
+                    const qtdContratos = contratosDaEmpresa(emp.id).length;
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
-                      <th className="py-3 px-4">Empresa / Unidade</th>
-                      <th className="py-3 px-4">CNPJ & UF</th>
-                      <th className="py-3 px-4">Estrutura</th>
-                      <th className="py-3 px-4">Plano</th>
-                      <th className="py-3 px-4">Utilizadores / Contratos</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {empresas.length > 0 ? empresas.map(emp => {
-                      const ehFilial = !!emp.matriz_id;
-                      const empresaMae = ehFilial ? empresas.find(m => m.id === emp.matriz_id) : null;
-                      const empAtiva = emp.ativo !== false;
-                      const qtdUsuarios = usuarios.filter(u => u.empresa_id === emp.id).length;
-                      const qtdContratos = contratosDaEmpresa(emp.id).length;
-
-                      return (
-                        <tr key={emp.id} className="hover:bg-slate-50">
-                          <td className="py-3.5 px-4 font-bold text-slate-800">
-                            {emp.nome || emp.nome_fantasia}
-                            {ehFilial && (
-                              <p className="text-[10px] text-purple-600 font-normal flex items-center gap-1 mt-0.5">
-                                <GitBranch className="w-3 h-3" /> Filial de: {empresaMae?.nome || 'Matriz'}
-                              </p>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 text-slate-600">
-                            <div>{emp.cnpj || 'Não informado'}</div>
-                            <span className="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded text-[10px] mt-0.5">
-                              {emp.uf || 'SP'}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    return (
+                      <tr key={emp.id} className="hover:bg-purple-50/30">
+                        <td className="py-4 px-5">
+                          <div className="font-bold text-slate-800">{emp.nome || emp.nome_fantasia}</div>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
                               ehFilial ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-purple-50 text-purple-700 border border-purple-200'
                             }`}>
-                              {ehFilial ? 'Filial' : 'Matriz Mãe'}
+                              {ehFilial ? 'Filial' : 'Matriz'}
                             </span>
-                          </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-indigo-600">{emp.plano || 'PRO'}</td>
-                          <td className="py-3.5 px-4 text-slate-700">
-                            <span className="font-bold">{qtdUsuarios}</span> / <span className="font-bold">{qtdContratos}</span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              empAtiva ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'
-                            }`}>
-                              {empAtiva ? 'Ativa' : 'Inativa'}
+                            {ehFilial && (
+                              <span className="text-[11px] text-purple-600 flex items-center gap-1">
+                                <GitBranch className="w-3 h-3" /> de {empresaMae?.nome || 'Matriz'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
+                            <span className="text-slate-600">{emp.cnpj || 'Não informado'}</span>
+                            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 font-bold rounded text-[10px]">
+                              {emp.uf || '-'}
                             </span>
-                          </td>
-                          <td className="py-3.5 px-4 text-right space-x-1">
-                            <button onClick={() => alternarAtivoEmpresa(emp)} title={empAtiva ? 'Desativar' : 'Ativar'} className={`p-1.5 rounded-lg ${empAtiva ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
-                              <Power className="w-3.5 h-3.5" />
+                          </div>
+                        </td>
+                        <td className="py-4 px-5 font-mono text-xs font-bold text-indigo-600 whitespace-nowrap">{emp.plano || 'PRO'}</td>
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-4 text-slate-700 whitespace-nowrap">
+                            <span className="flex items-center gap-1.5" title="Utilizadores">
+                              <Users className="w-3.5 h-3.5 text-purple-600" /> <span className="font-bold">{qtdUsuarios}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5" title="Contratos">
+                              <FileText className="w-3.5 h-3.5 text-purple-600" /> <span className="font-bold">{qtdContratos}</span>
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className={`px-3 py-1 text-xs rounded-full font-semibold border whitespace-nowrap ${
+                            empAtiva ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'
+                          }`}>
+                            {empAtiva ? 'Ativa' : 'Inativa'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5">
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => alternarAtivoEmpresa(emp)} title={empAtiva ? 'Desativar' : 'Ativar'} className={`p-2 rounded-xl border ${empAtiva ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                              <Power className="w-4 h-4" />
                             </button>
-                            <button onClick={() => prepararEdicaoEmpresa(emp)} className="p-1.5 bg-slate-100 text-purple-700 rounded-lg">
-                              <Edit className="w-3.5 h-3.5" />
+                            <button onClick={() => prepararEdicaoEmpresa(emp)} title="Editar" className="p-2 bg-slate-100 text-purple-700 rounded-xl border border-slate-200">
+                              <Edit className="w-4 h-4" />
                             </button>
-                            <button onClick={() => excluirEmpresa(emp)} className="p-1.5 bg-red-50 text-red-600 rounded-lg">
-                              <Trash2 className="w-3.5 h-3.5" />
+                            <button onClick={() => excluirEmpresa(emp)} title="Mover para a lixeira" className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-200">
+                              <Trash2 className="w-4 h-4" />
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    }) : (
-                      <tr>
-                        <td colSpan="7" className="py-8 text-center text-slate-400">Nenhuma empresa cadastrada.</td>
+                          </div>
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-slate-400">Nenhuma empresa cadastrada.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
         {/* TAB 3: CONTRATOS */}
         {activeTab === 'contratos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-4 bg-white border border-slate-200 p-6 rounded-3xl h-fit shadow-sm space-y-5">
-              <div className="flex items-center justify-between border-b pb-4 border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-purple-600" />
-                  {editingContratoId ? 'Editar Contrato' : 'Cadastrar Contrato'}
-                </h3>
-                {editingContratoId && (
-                  <button onClick={limparFormContrato} className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1">
-                    <X className="w-3.5 h-3.5" /> Cancelar
-                  </button>
-                )}
-              </div>
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
 
-              <form onSubmit={salvarContrato} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Empresa / Filial *</label>
-                  <select
-                    value={empresaContratoId}
-                    onChange={(e) => setEmpresaContratoId(e.target.value)}
-                    required
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
-                  >
-                    <option value="">Selecione a empresa...</option>
-                    {empresas.map(emp => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.nome || emp.nome_fantasia} {emp.matriz_id ? '(Filial)' : '(Matriz)'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Nome do Contrato *</label>
-                  <input
-                    type="text"
-                    required
-                    value={nomeContrato}
-                    onChange={(e) => setNomeContrato(e.target.value)}
-                    placeholder="Ex: Contrato SP-01"
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Estado (UF)</label>
-                  <select
-                    value={ufContrato}
-                    onChange={(e) => setUfContrato(e.target.value)}
-                    className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800"
-                  >
-                    <option value="">Selecione o Estado...</option>
-                    {UFS.map(uf => (
-                      <option key={uf} value={uf}>{uf}</option>
-                    ))}
-                  </select>
-                </div>
-
+            {/* BOTÃO PARA ABRIR O FORMULÁRIO DE NOVO CONTRATO */}
+            {!exibirFormContrato && (
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-900">Lista de Contratos</h3>
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl text-xs cursor-pointer"
+                  onClick={() => {
+                    limparFormContrato();
+                    setExibirFormContrato(true);
+                  }}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold hover:bg-purple-700 transition"
                 >
-                  {editingContratoId ? 'Atualizar Contrato' : 'Cadastrar Contrato'}
+                  <FileText className="w-4 h-4" /> Novo Contrato
                 </button>
+              </div>
+            )}
+
+            {/* FORMULÁRIO DE CADASTRO / EDIÇÃO */}
+            {exibirFormContrato && (
+              <form onSubmit={salvarContrato} className={`p-6 rounded-2xl space-y-5 border ${
+                editingContratoId ? 'bg-slate-50 border-slate-200' : 'bg-purple-50/50 border-purple-200'
+              }`}>
+                <div className="flex justify-between items-center">
+                  <h3 className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${
+                    editingContratoId ? 'text-purple-700' : 'text-purple-900'
+                  }`}>
+                    <FileText className="w-4 h-4 text-purple-600" />
+                    {editingContratoId ? 'Editar Contrato' : 'Cadastrar Novo Contrato'}
+                  </h3>
+                  <button type="button" onClick={limparFormContrato} className="text-slate-500 hover:text-slate-800">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Empresa / Filial *</label>
+                    <select
+                      value={empresaContratoId}
+                      onChange={(e) => setEmpresaContratoId(e.target.value)}
+                      required
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm"
+                    >
+                      <option value="">Selecione a empresa...</option>
+                      {empresas.map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.nome || emp.nome_fantasia} {emp.matriz_id ? '(Filial)' : '(Matriz)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Nome do Contrato *</label>
+                    <input
+                      type="text"
+                      required
+                      value={nomeContrato}
+                      onChange={(e) => setNomeContrato(e.target.value)}
+                      placeholder="Ex: Contrato SP-01"
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">Estado (UF)</label>
+                    <select
+                      value={ufContrato}
+                      onChange={(e) => setUfContrato(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm"
+                    >
+                      <option value="">Selecione o Estado...</option>
+                      {UFS.map(uf => (
+                        <option key={uf} value={uf}>{uf}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={limparFormContrato} className="px-5 py-2.5 bg-slate-200 text-slate-700 rounded-2xl text-sm font-semibold">Cancelar</button>
+                  <button type="submit" disabled={loading} className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-sm font-semibold">
+                    {editingContratoId ? 'Atualizar Contrato' : 'Cadastrar Contrato'}
+                  </button>
+                </div>
               </form>
+            )}
+
+            {/* BUSCA E FILTROS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-4 top-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={buscaContrato}
+                  onChange={(e) => setBuscaContrato(e.target.value)}
+                  placeholder="Buscar por nome ou UF..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-xs"
+                />
+              </div>
+              <select value={filtroEmpresaContrato} onChange={(e) => setFiltroEmpresaContrato(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs">
+                <option value="">Todas as empresas</option>
+                {empresas.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.nome || emp.nome_fantasia}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="lg:col-span-8 bg-white border border-slate-200 p-6 rounded-3xl shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-purple-600" /> Contratos Cadastrados
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-4 top-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={buscaContrato}
-                    onChange={(e) => setBuscaContrato(e.target.value)}
-                    placeholder="Buscar por nome ou UF..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-xs"
-                  />
-                </div>
-                <select value={filtroEmpresaContrato} onChange={(e) => setFiltroEmpresaContrato(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs">
-                  <option value="">Todas as empresas</option>
-                  {empresas.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.nome || emp.nome_fantasia}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="overflow-x-auto rounded-2xl border border-slate-200">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
-                      <th className="py-3 px-4">Contrato</th>
-                      <th className="py-3 px-4">Empresa</th>
-                      <th className="py-3 px-4">UF</th>
-                      <th className="py-3 px-4">Criado em</th>
-                      <th className="py-3 px-4 text-right">Ações</th>
+            {/* TABELA DE CONTRATOS */}
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs uppercase">
+                    <th className="py-4 px-5">Contrato</th>
+                    <th className="py-4 px-5">Empresa / Unidade</th>
+                    <th className="py-4 px-5">UF</th>
+                    <th className="py-4 px-5">Criado em</th>
+                    <th className="py-4 px-5 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {contratosFiltrados.length > 0 ? contratosFiltrados.map(c => (
+                    <tr key={c.id} className="hover:bg-purple-50/30">
+                      <td className="py-4 px-5 font-semibold text-slate-800">{c.nome_contrato}</td>
+                      <td className="py-4 px-5">
+                        {nomeDaEmpresa(c.empresa_id) ? (
+                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                            <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                            {nomeDaEmpresa(c.empresa_id)}
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded">
+                            Sem Empresa Vinculada
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-4 px-5 font-bold text-slate-700">{c.estado_uf || '-'}</td>
+                      <td className="py-4 px-5 text-slate-600">{fmtData(c.created_at)}</td>
+                      <td className="py-4 px-5 text-right space-x-2">
+                        <button onClick={() => prepararEdicaoContrato(c)} className="p-2 bg-slate-100 text-purple-700 rounded-xl border border-slate-200">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Mover este contrato para a Lixeira?')) moverParaLixeira('contratos', c.id, 'Contrato');
+                          }}
+                          className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-200"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {contratosFiltrados.length > 0 ? contratosFiltrados.map(c => (
-                      <tr key={c.id} className="hover:bg-slate-50">
-                        <td className="py-3.5 px-4 font-bold text-slate-800">{c.nome_contrato}</td>
-                        <td className="py-3.5 px-4 text-slate-700">
-                          {nomeDaEmpresa(c.empresa_id) ? (
-                            <span className="flex items-center gap-1.5">
-                              <Building2 className="w-3.5 h-3.5 text-purple-600" />
-                              {nomeDaEmpresa(c.empresa_id)}
-                            </span>
-                          ) : (
-                            <span className="text-amber-600 font-semibold bg-amber-50 px-2 py-0.5 rounded">Sem empresa</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-700">{c.estado_uf || '-'}</td>
-                        <td className="py-3.5 px-4 text-slate-600">{fmtData(c.created_at)}</td>
-                        <td className="py-3.5 px-4 text-right space-x-1">
-                          <button onClick={() => prepararEdicaoContrato(c)} className="p-1.5 bg-slate-100 text-purple-700 rounded-lg">
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (window.confirm('Mover este contrato para a Lixeira?')) moverParaLixeira('contratos', c.id, 'Contrato');
-                            }}
-                            className="p-1.5 bg-red-50 text-red-600 rounded-lg"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr>
-                        <td colSpan="5" className="py-8 text-center text-slate-400">Nenhum contrato encontrado.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  )) : (
+                    <tr>
+                      <td colSpan="5" className="py-8 text-center text-slate-400">Nenhum contrato encontrado.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
