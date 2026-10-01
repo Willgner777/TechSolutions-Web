@@ -119,7 +119,8 @@ export default function App() {
 
   if (loading) return <TelaCarregando />;
 
-  const home = '/admin-dev';
+  // Rota inicial baseada no cargo do utilizador
+  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
 
   let conteudoAutenticado = null;
   if (session) {
