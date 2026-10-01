@@ -8,7 +8,7 @@ import {
 export default function AdminDevPage() {
   const [activeTab, setActiveTab] = useState('empresas'); // 'usuarios' | 'empresas' | 'lixeira'
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ type: 'success', message: 'Utilizador restaurado com sucesso!' });
+  const [feedback, setFeedback] = useState({ type: '', message: '' });
 
   // ESTADOS: Empresas e Filiais
   const [empresas, setEmpresas] = useState([]);
@@ -27,7 +27,7 @@ export default function AdminDevPage() {
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [emailUsuario, setEmailUsuario] = useState('');
   const [ativoUsuario, setAtivoUsuario] = useState(true);
-  const [roleUsuario, setRoleUsuario] = useState('super_dev');
+  const [roleUsuario, setRoleUsuario] = useState('funcionario');
   const [cargoUsuario, setCargoUsuario] = useState('');
   const [contratoUsuario, setContratoUsuario] = useState('');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
@@ -161,7 +161,7 @@ export default function AdminDevPage() {
     setNomeUsuario(usr.nome || '');
     setEmailUsuario(usr.email || '');
     setAtivoUsuario(usr.ativo !== false);
-    setRoleUsuario(usr.role || 'super_dev');
+    setRoleUsuario(usr.role || 'funcionario');
     setCargoUsuario(usr.cargo || '');
     setContratoUsuario(usr.contrato || '');
     setEmpresaIdSelecionada(usr.empresa_id || '');
@@ -172,7 +172,7 @@ export default function AdminDevPage() {
     setNomeUsuario('');
     setEmailUsuario('');
     setAtivoUsuario(true);
-    setRoleUsuario('super_dev');
+    setRoleUsuario('funcionario');
     setCargoUsuario('');
     setContratoUsuario('');
     setEmpresaIdSelecionada('');
@@ -328,10 +328,12 @@ export default function AdminDevPage() {
                     <label className="block text-xs font-semibold text-slate-600">Nome</label>
                     <input type="text" value={nomeUsuario} onChange={(e) => setNomeUsuario(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
                   </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">E-mail (Editável)</label>
                     <input type="email" value={emailUsuario} onChange={(e) => setEmailUsuario(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
                   </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">Permissão (Role)</label>
                     <select value={roleUsuario} onChange={(e) => setRoleUsuario(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold">
@@ -340,14 +342,37 @@ export default function AdminDevPage() {
                       <option value="funcionario">funcionario</option>
                     </select>
                   </div>
+
+                  {/* CAMPO DE VÍNCULO DE EMPRESA / FILIAL */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600">
+                      Empresa / Filial Vinculada {roleUsuario === 'super_dev' && '(Não aplicável ao Super Dev)'}
+                    </label>
+                    <select 
+                      value={empresaIdSelecionada} 
+                      onChange={(e) => setEmpresaIdSelecionada(e.target.value)} 
+                      disabled={roleUsuario === 'super_dev'}
+                      className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm disabled:bg-slate-100 disabled:text-slate-400"
+                    >
+                      <option value="">Nenhuma / Sem Empresa</option>
+                      {empresas.map(emp => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.nome || emp.nome_fantasia} {emp.matriz_id ? '(Filial)' : '(Matriz)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">Cargo Operacional</label>
                     <input type="text" value={cargoUsuario} onChange={(e) => setCargoUsuario(e.target.value)} placeholder="Ex: Motorista, Gerente" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
                   </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">Contrato Vinculado</label>
                     <input type="text" value={contratoUsuario} onChange={(e) => setContratoUsuario(e.target.value)} placeholder="Ex: Contrato SP-01" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
                   </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-slate-600">Status de Acesso</label>
                     <button
@@ -376,6 +401,7 @@ export default function AdminDevPage() {
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-xs uppercase">
                     <th className="py-4 px-5">Nome</th>
                     <th className="py-4 px-5">E-mail</th>
+                    <th className="py-4 px-5">Empresa / Unidade</th>
                     <th className="py-4 px-5">Cargo</th>
                     <th className="py-4 px-5">Contrato</th>
                     <th className="py-4 px-5">Status</th>
@@ -387,6 +413,22 @@ export default function AdminDevPage() {
                     <tr key={usr.id} className="hover:bg-purple-50/30">
                       <td className="py-4 px-5 font-semibold text-slate-800">{usr.nome || 'Sem nome'}</td>
                       <td className="py-4 px-5 text-slate-600">{usr.email || 'Não informado'}</td>
+                      <td className="py-4 px-5">
+                        {usr.role === 'super_dev' ? (
+                          <span className="px-2.5 py-1 bg-purple-100 text-purple-800 rounded-lg text-xs font-bold">
+                            Global (Super Dev)
+                          </span>
+                        ) : usr.empresas?.nome ? (
+                          <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                            <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                            {usr.empresas.nome}
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 text-xs font-semibold bg-amber-50 px-2 py-0.5 rounded">
+                            Sem Empresa Vinculada
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 px-5 text-slate-700">{usr.cargo || '-'}</td>
                       <td className="py-4 px-5 text-slate-700">{usr.contrato || '-'}</td>
                       <td className="py-4 px-5">
@@ -510,7 +552,7 @@ export default function AdminDevPage() {
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl text-xs"
+                  className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 px-4 rounded-xl text-xs cursor-pointer"
                 >
                   {editingEmpresaId ? 'Atualizar Registro' : 'Cadastrar Empresa / Filial'}
                 </button>
