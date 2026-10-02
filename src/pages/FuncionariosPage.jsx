@@ -1,6 +1,6 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Users, UserPlus, Search, Edit, Trash, X, RefreshCw } from 'lucide-react';
+import { Users, UserPlus, Search, Edit, Trash, X, RefreshCw, Key } from 'lucide-react';
 import FeedbackBanner from '../components/FeedbackBanner';
 import { useFuncionarios } from '../hooks/useFuncionarios';
 import { ESTADOS_BRASIL } from '../utils/estados';
@@ -9,7 +9,7 @@ import { confirmarAcao } from '../utils/browser';
 
 /**
  * Tela de cadastro e gestão de funcionários da empresa.
- * Toda a regra de negócio e acesso a dados está em `useFuncionarios`.
+ * Permite alteração de senha apenas se o usuário for 'admin_empresa', 'super_dev' ou 'admin_global'.
  */
 export default function FuncionariosPage({ userProfile }) {
   const {
@@ -31,6 +31,10 @@ export default function FuncionariosPage({ userProfile }) {
     salvar,
     remover,
   } = useFuncionarios(userProfile?.empresa_id);
+
+  // Verifica se o usuário atual possui permissão de administrador
+  const userRole = userProfile?.role?.toLowerCase() || '';
+  const isAdmin = ['admin_empresa', 'super_dev', 'superdev', 'admin_global'].includes(userRole);
 
   const confirmarRemocao = useCallback(
     (id) => {
@@ -56,7 +60,8 @@ export default function FuncionariosPage({ userProfile }) {
           <div className="flex items-center gap-3">
             <button
               onClick={recarregar}
-              className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200"
+              className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200 transition"
+              title="Recarregar lista"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -65,7 +70,7 @@ export default function FuncionariosPage({ userProfile }) {
             {!exibirForm && (
               <button
                 onClick={abrirNovo}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold text-sm rounded-2xl shadow-md hover:bg-purple-700 transition"
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white font-semibold text-sm rounded-2xl shadow-md hover:bg-purple-700 transition cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" /> + Novo Funcionário
               </button>
@@ -93,7 +98,7 @@ export default function FuncionariosPage({ userProfile }) {
                 <input
                   type="text"
                   required
-                  value={formulario.nome}
+                  value={formulario.nome || ''}
                   onChange={(e) => atualizarCampo('nome', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
@@ -104,30 +109,48 @@ export default function FuncionariosPage({ userProfile }) {
                 <input
                   type="email"
                   required
-                  value={formulario.email}
+                  value={formulario.email || ''}
                   onChange={(e) => atualizarCampo('email', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
               </div>
 
-              {!editingId && (
+              {/* LÓGICA DE SENHA */}
+              {!editingId ? (
+                /* 1. Ao Criar Novo Funcionário: Senha Obrigatória */
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Senha Provisória *</label>
                   <input
                     type="password"
                     required
-                    value={formulario.senha}
+                    value={formulario.senha || ''}
                     onChange={(e) => atualizarCampo('senha', e.target.value)}
+                    placeholder="••••••••"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                   />
                 </div>
-              )}
+              ) : isAdmin ? (
+                /* 2. Ao Editar Funcionário e for Admin: Permite redefinir a senha (sem ver a antiga) */
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                    <Key className="w-3.5 h-3.5 text-purple-600" />
+                    Nova Senha (deixe em branco para não alterar)
+                  </label>
+                  <input
+                    type="password"
+                    value={formulario.senha || ''}
+                    onChange={(e) => atualizarCampo('senha', e.target.value)}
+                    placeholder="Nova senha..."
+                    className="w-full bg-purple-50/50 border border-purple-200 rounded-2xl p-3 text-xs focus:ring-2 focus:ring-purple-500 outline-none"
+                  />
+                </div>
+              ) : null}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Cargo</label>
                 <input
                   type="text"
-                  value={formulario.cargo}
+                  value={formulario.cargo || ''}
                   onChange={(e) => atualizarCampo('cargo', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
@@ -137,7 +160,7 @@ export default function FuncionariosPage({ userProfile }) {
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Setor / Departamento</label>
                 <input
                   type="text"
-                  value={formulario.setor}
+                  value={formulario.setor || ''}
                   onChange={(e) => atualizarCampo('setor', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
@@ -146,7 +169,7 @@ export default function FuncionariosPage({ userProfile }) {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Contrato Vinculado</label>
                 <select
-                  value={formulario.contrato}
+                  value={formulario.contrato || ''}
                   onChange={(e) => atualizarCampo('contrato', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 >
@@ -162,7 +185,7 @@ export default function FuncionariosPage({ userProfile }) {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Estado (UF)</label>
                 <select
-                  value={formulario.uf}
+                  value={formulario.uf || ''}
                   onChange={(e) => atualizarCampo('uf', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 >
@@ -177,7 +200,7 @@ export default function FuncionariosPage({ userProfile }) {
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Data de Admissão</label>
                 <input
                   type="date"
-                  value={formulario.dataAdmissao}
+                  value={formulario.dataAdmissao || ''}
                   onChange={(e) => atualizarCampo('dataAdmissao', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
@@ -187,7 +210,7 @@ export default function FuncionariosPage({ userProfile }) {
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Data de Demissão</label>
                 <input
                   type="date"
-                  value={formulario.dataDemissao}
+                  value={formulario.dataDemissao || ''}
                   onChange={(e) => atualizarCampo('dataDemissao', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 />
@@ -196,7 +219,7 @@ export default function FuncionariosPage({ userProfile }) {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Status</label>
                 <select
-                  value={formulario.status}
+                  value={formulario.status || 'Ativo'}
                   onChange={(e) => atualizarCampo('status', e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
                 >
@@ -211,14 +234,14 @@ export default function FuncionariosPage({ userProfile }) {
               <button
                 type="button"
                 onClick={limparFormulario}
-                className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-2xl text-xs font-semibold"
+                className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-2xl text-xs font-semibold hover:bg-slate-200 transition"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-xs font-semibold shadow-md"
+                className="px-6 py-2.5 bg-purple-600 text-white rounded-2xl text-xs font-semibold shadow-md hover:bg-purple-700 transition"
               >
                 {editingId ? 'Salvar Alterações' : 'Cadastrar Funcionário'}
               </button>
@@ -235,7 +258,7 @@ export default function FuncionariosPage({ userProfile }) {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por nome ou e-mail..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-xs"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-xs outline-none focus:border-purple-500"
             />
           </div>
 
@@ -254,7 +277,7 @@ export default function FuncionariosPage({ userProfile }) {
               <tbody className="divide-y divide-slate-100">
                 {funcionariosFiltrados.length > 0 ? (
                   funcionariosFiltrados.map((func) => (
-                    <tr key={func.id} className="hover:bg-slate-50/80">
+                    <tr key={func.id} className="hover:bg-slate-50/80 transition">
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-800">{func.nome || 'Sem Nome'}</div>
                         <div className="text-[11px] text-slate-500">{func.email}</div>
@@ -273,10 +296,18 @@ export default function FuncionariosPage({ userProfile }) {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right space-x-1">
-                        <button onClick={() => prepararEdicao(func)} className="p-1.5 bg-slate-100 text-purple-700 rounded-xl">
+                        <button 
+                          onClick={() => prepararEdicao(func)} 
+                          className="p-1.5 bg-slate-100 text-purple-700 hover:bg-purple-100 rounded-xl transition"
+                          title="Editar"
+                        >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button onClick={() => confirmarRemocao(func.id)} className="p-1.5 bg-red-50 text-red-600 rounded-xl">
+                        <button 
+                          onClick={() => confirmarRemocao(func.id)} 
+                          className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition"
+                          title="Remover"
+                        >
                           <Trash className="w-3.5 h-3.5" />
                         </button>
                       </td>
@@ -302,5 +333,6 @@ export default function FuncionariosPage({ userProfile }) {
 FuncionariosPage.propTypes = {
   userProfile: PropTypes.shape({
     empresa_id: PropTypes.string,
+    role: PropTypes.string,
   }),
 };
