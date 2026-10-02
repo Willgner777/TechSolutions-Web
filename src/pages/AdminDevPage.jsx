@@ -34,6 +34,8 @@ export default function AdminDevPage() {
     materiais,
   } = admin;
 
+  const { empresaIdSelecionada } = admin;
+
   const [health, setHealth] = useState({ status: 'checking', latency: null });
 
   useEffect(() => {
@@ -176,7 +178,7 @@ export default function AdminDevPage() {
 
         {activeTab === 'usuarios' && <UsuariosTab admin={admin} />}
         {activeTab === 'empresas' && <EmpresasTab admin={admin} />}
-        {activeTab === 'materiais' && <MateriaisTab admin={admin} />}
+        {activeTab === 'materiais' && <MateriaisTab admin={admin} empresaId={empresaIdSelecionada} />}
         {activeTab === 'contratos' && <ContratosTab admin={admin} />}
         {activeTab === 'lixeira' && <LixeiraTab admin={admin} />}
       </div>

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Package, Edit, X, Trash2, Power, Plus, Download } from 'lucide-react';
 import { exportarCSV } from '../../utils/utils';
 
-export default function MateriaisTab({ admin }) {
+export default function MateriaisTab({ admin, empresaId: empresaIdProp }) {
   const {
     empresaIdSelecionada,
     empresas,
@@ -24,8 +24,11 @@ export default function MateriaisTab({ admin }) {
     setEmpresaNova,
   } = admin;
 
+  // Prioriza o prop direto, depois o do admin
+  const empresaId = empresaIdProp ?? empresaIdSelecionada;
+
   // sem empresa selecionada: mostra os materiais de todas as empresas
-  const modoTodas = !empresaIdSelecionada;
+  const modoTodas = !empresaId;
   const nomeEmpresa = (id) => {
     const emp = empresas.find(e => e.id === id);
     return emp?.nome || emp?.nome_fantasia || '-';
@@ -86,6 +89,20 @@ export default function MateriaisTab({ admin }) {
                 </select>
               </div>
             )}
+
+            {/* Em modo edição com empresa selecionada, mostra empresa do material (read-only) */}
+            {!modoTodas && editingId && (
+              <div className="md:col-span-4">
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa</label>
+                <input
+                  type="text"
+                  disabled
+                  value={empresaAtual?.nome || empresaAtual?.nome_fantasia || '—'}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3 text-xs font-semibold text-slate-600"
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Código</label>
               <input
