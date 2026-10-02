@@ -7,6 +7,7 @@ import ContratosTab from '../components/admin/ContratosTab';
 import LixeiraTab from '../components/admin/LixeiraTab';
 import MateriaisTab from '../components/admin/MateriaisTab';
 import { useAdminDev } from '../hooks/useAdminDev';
+import { supabase } from '../services/supabaseClient';
 
 /**
  * Console Super Dev: gestão central de usuários, empresas, contratos e lixeira.
@@ -39,7 +40,12 @@ export default function AdminDevPage() {
     const check = async () => {
       const start = performance.now();
       try {
-        const res = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/rest/v1/`);
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = {
+          apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session?.access_token || process.env.REACT_APP_SUPABASE_ANON_KEY}`
+        };
+        const res = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/rest/v1/`, { headers });
         const latency = Math.round(performance.now() - start);
         setHealth({ status: res.ok ? 'ok' : 'degraded', latency });
       } catch {

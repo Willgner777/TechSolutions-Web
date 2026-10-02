@@ -40,7 +40,7 @@ export function useAdminDev() {
     mostrarSucesso,
     mostrarErro,
     recarregar: carregarDadosGlobais,
-    getEmpresaId: () => empresasCtl.empresaIdSelecionada,
+    empresaId: empresasCtl.empresaIdSelecionada,
   });
 
   const contratosCtl = useAdminContratos({

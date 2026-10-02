@@ -1,4 +1,5 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { useStatusOperacao } from '../useStatusOperacao';
 import { 
   listarMateriaisDaEmpresa, 
   criarMaterial, 
@@ -11,9 +12,11 @@ import { confirmarAcao } from '../../utils/browser';
 
 /**
  * Hook para gestão de materiais no console Super Dev.
- * Aceita `empresaId` (string) ou `getEmpresaId` (function) para reagir a mudanças de empresa.
+ * Igual ao useMateriais do admin_empresa, recebe empresaId e reage a mudanças.
  */
-export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recarregar, empresaId, getEmpresaId }) {
+export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recarregar, empresaId }) {
+  const { loading, feedback, executar: execOp, mostrarSucesso: showSucesso, mostrarErro: showErro, limparFeedback, isMounted } = useStatusOperacao();
+  
   const [materiais, setMateriais] = useState([]);
   const [exibirForm, setExibirForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -25,38 +28,28 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
   });
   const [proximoCod, setProximoCod] = useState(1);
 
-  const lastEmpresaIdRef = useRef(null);
-
-  const getCurrentEmpresaId = () => typeof getEmpresaId === 'function' ? getEmpresaId() : empresaId;
-
   const recarregarMateriais = useCallback(async () => {
-    const eid = getCurrentEmpresaId();
-    if (!eid) return;
+    if (!empresaId) {
+      setMateriais([]);
+      setProximoCod(1);
+      return;
+    }
     await executar(async () => {
       const [lista, prox] = await Promise.all([
-        listarMateriaisDaEmpresa(eid),
-        proximoCodigo(eid)
+        listarMateriaisDaEmpresa(empresaId),
+        proximoCodigo(empresaId)
       ]);
-      setMateriais(lista);
-      setProximoCod(prox);
-    }, { contexto: 'useAdminMateriais.recarregarMateriais' });
-  }, [executar]);
-
-  // Polling para detectar troca de empresa na aba Empresas
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentId = getCurrentEmpresaId();
-      if (currentId && currentId !== lastEmpresaIdRef.current) {
-        lastEmpresaIdRef.current = currentId;
-        recarregarMateriais();
+      if (isMounted()) {
+        setMateriais(lista);
+        setProximoCod(prox);
       }
-    }, 400);
-    return () => clearInterval(interval);
-  }, [recarregarMateriais]);
+    }, { contexto: 'useAdminMateriais.recarregarMateriais' });
+  }, [empresaId, executar, isMounted]);
 
+  // Recarrega quando empresaId muda
   useEffect(() => {
     recarregarMateriais();
-  }, [recarregarMateriais]);
+  }, [recarregarMateriais, empresaId]);
 
   const limparForm = useCallback(() => {
     setEditingId(null);
@@ -82,15 +75,14 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
 
   const salvar = useCallback(async (e) => {
     e.preventDefault();
-    const eid = getCurrentEmpresaId();
-    if (!formulario.nome.trim() || !eid) return;
+    if (!formulario.nome.trim() || !empresaId) return;
 
     const salvou = await executar(async () => {
       if (editingId) {
         await atualizarMaterial(editingId, formulario);
         mostrarSucesso('Material atualizado!');
       } else {
-        await criarMaterial({ empresaId: eid, ...formulario });
+        await criarMaterial({ empresaId, ...formulario });
         mostrarSucesso('Material cadastrado!');
       }
     }, { contexto: 'useAdminMateriais.salvar' });
@@ -99,7 +91,7 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
       limparForm();
       await recarregarMateriais();
     }
-  }, [editingId, formulario, executar, mostrarSucesso, limparForm, recarregarMateriais]);
+  }, [editingId, empresaId, formulario, executar, mostrarSucesso, limparForm, recarregarMateriais]);
 
   const remover = useCallback(async (id) => {
     if (!confirmarAcao('Excluir este material?')) return;
@@ -119,6 +111,9 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
   }, [executar, mostrarSucesso, recarregarMateriais]);
 
   return {
+    loading,
+    feedback,
+    limparFeedback,
     materiais,
     exibirForm,
     editingId,
