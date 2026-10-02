@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from './Admbases';
+import { supabase } from '../services/supabaseClient';
 import { useStatusOperacao } from './useStatusOperacao';
 import { obterEmpresaIdDoUsuarioAtual } from '../services/authService';
 import { listarContratosResumoDaEmpresa } from '../services/contratosService';
@@ -20,11 +20,6 @@ const FORMULARIO_INICIAL = {
   status: 'Ativo',
 };
 
-/**
- * Converte o formulário nas colunas da tabela `perfis` (campos comuns a criar e editar).
- * @param {typeof FORMULARIO_INICIAL} f
- * @returns {object}
- */
 const montarDadosDoPerfil = (f) => ({
   nome: f.nome,
   email: f.email,
@@ -38,11 +33,6 @@ const montarDadosDoPerfil = (f) => ({
   ativo: f.status === 'Ativo',
 });
 
-/**
- * Regras e dados da tela de Funcionários: listagem, busca, cadastro, edição e remoção.
- *
- * @param {string | null} [empresaIdDoPerfil] - Empresa do usuário logado, quando já conhecida
- */
 export function useFuncionarios(empresaIdDoPerfil = null) {
   const { loading, feedback, executar, mostrarSucesso, mostrarErro, limparFeedback, isMounted } = useStatusOperacao();
 
@@ -98,7 +88,7 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
     setFormulario({
       nome: func.nome || '',
       email: func.email || '',
-      senha: '', // Mantém limpo ao editar
+      senha: '',
       cargo: func.cargo || '',
       setor: func.setor || '',
       contrato: func.contrato || '',
@@ -122,20 +112,14 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
       const salvou = await executar(
         async () => {
           if (editingId) {
-            // 1. Atualiza primeiramente os dados cadastrais na tabela 'perfis'
             await atualizarPerfil(editingId, montarDadosDoPerfil(formulario));
 
-            // 2. Tenta redefinir a senha apenas se o campo foi preenchido
             if (formulario.senha && formulario.senha.trim().length >= 6) {
               try {
-                // Tenta alterar a senha através de Edge Function ou cliente admin isolado
-                const { error: errorSenha } = await supabase.functions.invoke('update-user-password', {
+                const { error: fnError } = await supabase.functions.invoke('update-user-password', {
                   body: { userId: editingId, newPassword: formulario.senha.trim() },
                 });
-
-                if (errorSenha) {
-                  console.warn('Não foi possível redefinir a senha via Edge Function:', errorSenha);
-                }
+                if (fnError) console.warn('Aviso ao redefinir senha via Edge Function:', fnError);
               } catch (errSenha) {
                 console.error('Falha ao tentar redefinir a senha do usuário:', errSenha);
               }
@@ -145,9 +129,8 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
             return;
           }
 
-          // Fluxo de criação de novo funcionário
           if (!formulario.senha || formulario.senha.trim().length < 6) {
-            throw new Error('Informe uma senha provisória com no mínimo 6 caracteres.');
+            throw new Error('A senha deve ter no mínimo 6 caracteres.');
           }
 
           await cadastrarUsuarioComPerfil({
@@ -157,6 +140,7 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
             role: 'funcionario',
             dadosPerfil: { ...montarDadosDoPerfil(formulario), role: 'funcionario', empresa_id: empresaId },
           });
+
           mostrarSucesso('Funcionário cadastrado com sucesso!');
         },
         { contexto: 'useFuncionarios.salvar' }
