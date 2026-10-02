@@ -53,7 +53,7 @@ export function useAdminDev() {
 
   const handleLogout = useCallback(async () => {
     await sair();
-    window.location.href = '/';
+    window.location.href = '/login';
   }, []);
 
   return {

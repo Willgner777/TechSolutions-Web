@@ -35,3 +35,28 @@ export async function cadastrarUsuarioComPerfil({ email, senha, nome, role, dado
   const respostaPerfil = await clientePerfil.from('perfis').upsert([{ id: usuario.id, ...dadosPerfil }]);
   resolverResposta({ data: null, error: respostaPerfil.error }, 'usuariosService.cadastrarUsuarioComPerfil.perfil');
 }
+
+/**
+ * Atualiza e-mail e/ou senha no Auth (login) de um usuário já existente.
+ *
+ * @param {string} userId - ID do usuário (`auth.users` / `perfis.id`).
+ * @param {{ email?: string, senha?: string }} credenciais
+ * @returns {Promise<void>}
+ */
+export async function atualizarCredenciaisAuth(userId, { email, senha } = {}) {
+  const atributos = {};
+  if (typeof email === 'string' && email.trim()) atributos.email = email.trim();
+  if (typeof senha === 'string' && senha.trim()) atributos.password = senha.trim();
+  if (!Object.keys(atributos).length) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const resposta =
+    user?.id === userId
+      ? await supabase.auth.updateUser(atributos)
+      : await supabase.auth.admin.updateUserById(userId, atributos);
+
+  resolverResposta(resposta, 'usuariosService.atualizarCredenciaisAuth');
+}

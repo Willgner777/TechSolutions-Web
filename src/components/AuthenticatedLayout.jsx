@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Menu from './Menu';
 import ErrorBoundary from './ErrorBoundary';
 import PageLoader from './PageLoader';
+import { podeUsarCadastros } from '../utils/utils';
 
 // Páginas carregadas sob demanda: só são baixadas quando o usuário abre a aba.
 const FuncionariosPage = lazy(() => import('../pages/FuncionariosPage'));
@@ -18,6 +19,7 @@ export default function AuthenticatedLayout({ userProfile, onLogout }) {
   const [activeTab, setActiveTab] = useState('funcionarios');
 
   const abrirConsoleDev = useCallback(() => navigate('/admin-dev'), [navigate]);
+  const podeCadastros = podeUsarCadastros(userProfile?.role);
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
@@ -34,8 +36,8 @@ export default function AuthenticatedLayout({ userProfile, onLogout }) {
       <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <ErrorBoundary key={activeTab} variante="pagina">
           <Suspense fallback={<PageLoader />}>
-            {activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
-            {activeTab === 'contratos' && <ContratosPage userProfile={userProfile} />}
+            {podeCadastros && activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
+            {podeCadastros && activeTab === 'contratos' && <ContratosPage userProfile={userProfile} />}
           </Suspense>
         </ErrorBoundary>
       </main>

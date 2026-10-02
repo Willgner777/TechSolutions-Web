@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { atualizarPerfil } from '../../services/perfisService';
-import { cadastrarUsuarioComPerfil } from '../../services/usuariosService';
+import { atualizarCredenciaisAuth, cadastrarUsuarioComPerfil } from '../../services/usuariosService';
 import { confirmarAcao } from '../../utils/browser';
 
 /**
@@ -25,6 +25,7 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
   const [cargoUsuario, setCargoUsuario] = useState('');
   const [contratoUsuario, setContratoUsuario] = useState('');
   const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
+  const [senhaUsuario, setSenhaUsuario] = useState('');
 
   // Filtros da lista
   const [buscaUsuario, setBuscaUsuario] = useState('');
@@ -114,6 +115,7 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
     setCargoUsuario(usr.cargo || '');
     setContratoUsuario(usr.contrato || '');
     setEmpresaIdSelecionada(usr.empresa_id || '');
+    setSenhaUsuario('');
   }, []);
 
   const limparFormUsuario = useCallback(() => {
@@ -125,6 +127,7 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
     setCargoUsuario('');
     setContratoUsuario('');
     setEmpresaIdSelecionada('');
+    setSenhaUsuario('');
   }, []);
 
   const salvarUsuario = useCallback(
@@ -143,6 +146,9 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
             empresa_id: roleUsuario === 'super_dev' ? null : empresaIdSelecionada || null,
             ativo: ativoUsuario,
           });
+          if (senhaUsuario.trim()) {
+            await atualizarCredenciaisAuth(editingUsuarioId, { senha: senhaUsuario });
+          }
           mostrarSucesso('Dados do utilizador salvos com sucesso!');
         },
         { contexto: 'useAdminUsuarios.salvarUsuario', prefixoErro: 'Erro ao salvar: ' }
@@ -162,6 +168,7 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
       contratoUsuario,
       empresaIdSelecionada,
       ativoUsuario,
+      senhaUsuario,
       executar,
       mostrarSucesso,
       limparFormUsuario,
@@ -213,6 +220,8 @@ export function useAdminUsuarios({ executar, mostrarSucesso, mostrarErro, recarr
     setContratoUsuario,
     empresaIdSelecionada,
     setEmpresaIdSelecionada,
+    senhaUsuario,
+    setSenhaUsuario,
     buscaUsuario,
     setBuscaUsuario,
     filtroEmpresaUsuario,

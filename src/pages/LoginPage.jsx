@@ -44,7 +44,7 @@ export default function LoginPage() {
 
       // A permissão (role) define para onde o usuário é levado após o login.
       const perfil = await buscarRoleDoPerfil(authData.user.id);
-      window.location.href = perfil?.role === 'super_dev' ? '/admin-dev' : '/';
+      window.location.href = perfil?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
     } catch (err) {
       logger.error('LoginPage', 'Falha inesperada no login.', err);
       setErrorMessage(traduzirErroLogin(err));

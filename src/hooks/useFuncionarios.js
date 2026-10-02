@@ -4,7 +4,7 @@ import { obterEmpresaIdDoUsuarioAtual } from '../services/authService';
 import { listarContratosResumoDaEmpresa } from '../services/contratosService';
 import { atualizarPerfil, listarFuncionariosDaEmpresa } from '../services/perfisService';
 import { moverParaLixeira } from '../services/lixeiraService';
-import { cadastrarUsuarioComPerfil } from '../services/usuariosService';
+import { atualizarCredenciaisAuth, cadastrarUsuarioComPerfil } from '../services/usuariosService';
 
 const FORMULARIO_INICIAL = {
   nome: '',
@@ -123,6 +123,9 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
         async () => {
           if (editingId) {
             await atualizarPerfil(editingId, montarDadosDoPerfil(formulario));
+            if (formulario.senha.trim()) {
+              await atualizarCredenciaisAuth(editingId, { senha: formulario.senha });
+            }
             mostrarSucesso('Funcionário atualizado!');
             return;
           }

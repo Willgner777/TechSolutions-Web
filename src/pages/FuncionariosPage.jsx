@@ -110,18 +110,16 @@ export default function FuncionariosPage({ userProfile }) {
                 />
               </div>
 
-              {!editingId && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Senha Provisória *</label>
-                  <input
-                    type="password"
-                    required
-                    value={formulario.senha}
-                    onChange={(e) => atualizarCampo('senha', e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Senha Provisória *</label>
+                <input
+                  type="password"
+                  required={!editingId}
+                  value={formulario.senha}
+                  onChange={(e) => atualizarCampo('senha', e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
+                />
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Cargo</label>

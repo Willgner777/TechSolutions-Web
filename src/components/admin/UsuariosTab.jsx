@@ -37,6 +37,7 @@ export default function UsuariosTab({ admin }) {
     novoRole,
     prepararEdicaoUsuario,
     roleUsuario,
+    senhaUsuario,
     salvarUsuario,
     setAtivoUsuario,
     setBuscaUsuario,
@@ -57,6 +58,7 @@ export default function UsuariosTab({ admin }) {
     setNovoNome,
     setNovoRole,
     setRoleUsuario,
+    setSenhaUsuario,
     usuariosFiltrados,
   } = admin;
 
@@ -174,6 +176,11 @@ export default function UsuariosTab({ admin }) {
             <div>
               <label className="block text-xs font-semibold text-slate-600">E-mail (Editável)</label>
               <input type="email" value={emailUsuario} onChange={(e) => setEmailUsuario(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600">Senha</label>
+              <input type="password" value={senhaUsuario} onChange={(e) => setSenhaUsuario(e.target.value)} placeholder="Mínimo 6 caracteres" className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm" />
             </div>
 
             <div>

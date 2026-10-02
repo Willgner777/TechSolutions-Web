@@ -4,6 +4,7 @@ import {
   Users, ChevronDown, ChevronRight, LogOut, 
   FolderTree, Code, Menu as MenuIcon, X, FileText 
 } from 'lucide-react';
+import { podeUsarCadastros } from '../utils/utils';
 
 /**
  * Menu lateral (sidebar) da aplicação, com versão móvel retrátil.
@@ -66,7 +67,8 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
               Navegação
             </span>
 
-            {/* PASTA: CADASTROS */}
+            {/* PASTA: CADASTROS — somente admin da empresa */}
+            {podeUsarCadastros(usuarioAtual?.role) && (
             <div>
               <button
                 onClick={() => setMenuCadastrosOpen(!menuCadastrosOpen)}
@@ -120,6 +122,7 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
                 </div>
               )}
             </div>
+            )}
 
             {/* BOTÃO EXCLUSIVO PARA SUPER DEV */}
             {usuarioAtual?.role === 'super_dev' && (
