@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { supabase } from './Admbases'; // IMPORTANTE: Ajuste o caminho de importação do Supabase
 import { useStatusOperacao } from './useStatusOperacao';
 import { obterEmpresaIdDoUsuarioAtual } from '../services/authService';
 import { listarContratosResumoDaEmpresa } from '../services/contratosService';
@@ -98,7 +99,7 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
     setFormulario({
       nome: func.nome || '',
       email: func.email || '',
-      senha: '',
+      senha: '', // Mantém em branco ao abrir edição
       cargo: func.cargo || '',
       setor: func.setor || '',
       contrato: func.contrato || '',
@@ -122,10 +123,26 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
       const salvou = await executar(
         async () => {
           if (editingId) {
+            // 1. Atualiza dados do perfil na tabela
             await atualizarPerfil(editingId, montarDadosDoPerfil(formulario));
-            mostrarSucesso('Funcionário atualizado!');
+
+            // 2. Se o Admin informou uma nova senha, redefine a senha no Supabase Auth
+            if (formulario.senha && formulario.senha.trim() !== '') {
+              const { error: errorSenha } = await supabase.auth.admin.updateUserById(
+                editingId,
+                { password: formulario.senha.trim() }
+              );
+
+              if (errorSenha) {
+                throw new Error(`Dados atualizados, mas falhou ao alterar a senha: ${errorSenha.message}`);
+              }
+            }
+
+            mostrarSucesso('Funcionário e credenciais atualizados com sucesso!');
             return;
           }
+
+          // Fluxo de criação de novo funcionário
           await cadastrarUsuarioComPerfil({
             email: formulario.email,
             senha: formulario.senha,
