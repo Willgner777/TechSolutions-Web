@@ -10,6 +10,10 @@ import { exportarCSV } from '../utils/utils';
  * Usa o hook useAdminMateriais que já filtra pela empresa do usuário logado.
  */
 export default function MateriaisPage({ userProfile }) {
+  // super_dev enxerga todas as empresas e não precisa de empresa vinculada
+  const superDev = [userProfile?.perfil, userProfile?.role, userProfile?.papel, userProfile?.tipo]
+    .includes('super_dev');
+
   const {
     loading,
     feedback,
@@ -27,7 +31,10 @@ export default function MateriaisPage({ userProfile }) {
     salvar,
     remover,
     toggleAtivo,
-  } = useMateriais(userProfile?.empresa_id);
+    empresas,
+    empresaSelecionada,
+    setEmpresaSelecionada,
+  } = useMateriais(userProfile?.empresa_id, { superDev });
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
@@ -44,6 +51,18 @@ export default function MateriaisPage({ userProfile }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {superDev && (
+              <select
+                value={empresaSelecionada}
+                onChange={(e) => setEmpresaSelecionada(e.target.value)}
+                className="bg-slate-100 text-slate-700 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs font-semibold"
+              >
+                <option value="">Todas as empresas</option>
+                {empresas.map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.nome}</option>
+                ))}
+              </select>
+            )}
             <button
               onClick={recarregarMateriais}
               className="p-3 bg-slate-100 text-slate-700 rounded-2xl hover:bg-slate-200"
@@ -169,6 +188,7 @@ export default function MateriaisPage({ userProfile }) {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
                   <th className="py-3.5 px-4 w-20">Cód</th>
+                  {superDev && <th className="py-3.5 px-4">Empresa</th>}
                   <th className="py-3.5 px-4">Material</th>
                   <th className="py-3.5 px-4">UMB</th>
                   <th className="py-3.5 px-4">Descrição</th>
@@ -183,6 +203,9 @@ export default function MateriaisPage({ userProfile }) {
                       <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
                         {String(mat.codigo).padStart(2, '0')}
                       </td>
+                      {superDev && (
+                        <td className="py-3.5 px-4 text-slate-600">{mat.empresa_nome || '-'}</td>
+                      )}
                       <td className="py-3.5 px-4 font-bold text-slate-800">{mat.nome}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-600">{mat.umb || 'UN'}</td>
                       <td className="py-3.5 px-4 text-slate-500">{mat.descricao || '-'}</td>
@@ -220,7 +243,7 @@ export default function MateriaisPage({ userProfile }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="py-8 text-center text-slate-400">
+                    <td colSpan={superDev ? 7 : 6} className="py-8 text-center text-slate-400">
                       Nenhum material cadastrado.
                     </td>
                   </tr>
@@ -247,5 +270,9 @@ export default function MateriaisPage({ userProfile }) {
 MateriaisPage.propTypes = {
   userProfile: PropTypes.shape({
     empresa_id: PropTypes.string,
+    perfil: PropTypes.string,
+    role: PropTypes.string,
+    papel: PropTypes.string,
+    tipo: PropTypes.string,
   }),
 };

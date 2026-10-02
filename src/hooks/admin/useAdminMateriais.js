@@ -1,7 +1,7 @@
-import { useCallback, useState, useEffect } from 'react';
-import { useStatusOperacao } from '../useStatusOperacao';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { 
   listarMateriaisDaEmpresa, 
+  listarTodosMateriais,
   criarMaterial, 
   atualizarMaterial, 
   alternarAtivoMaterial, 
@@ -12,11 +12,24 @@ import { confirmarAcao } from '../../utils/browser';
 
 /**
  * Hook para gestão de materiais no console Super Dev.
- * Igual ao useMateriais do admin_empresa, recebe empresaId e reage a mudanças.
+ * - Com empresa selecionada: lista e cadastra nessa empresa.
+ * - Sem empresa selecionada: lista os materiais de TODAS as empresas e,
+ *   para cadastrar, usa a empresa escolhida no formulário (empresaNova).
+ *
+ * IMPORTANTE: este hook NÃO retorna loading/feedback/limparFeedback.
+ * Antes ele criava um useStatusOperacao próprio e devolvia esses valores, que
+ * sobrescreviam (no spread do useAdminDev) os do painel: os erros e avisos de
+ * salvar nunca apareciam na tela, pois o executar usado era o do painel.
  */
-export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recarregar, empresaId }) {
-  const { loading, feedback, executar: execOp, mostrarSucesso: showSucesso, mostrarErro: showErro, limparFeedback, isMounted } = useStatusOperacao();
-  
+export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, empresaId }) {
+  // controle próprio de "componente montado" (evita setState após desmontar)
+  const montadoRef = useRef(true);
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => { montadoRef.current = false; };
+  }, []);
+  const isMounted = useCallback(() => montadoRef.current, []);
+
   const [materiais, setMateriais] = useState([]);
   const [exibirForm, setExibirForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -27,14 +40,18 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
     codigo: null
   });
   const [proximoCod, setProximoCod] = useState(1);
+  // empresa escolhida no formulário quando nenhuma empresa está selecionada no painel
+  const [empresaNova, setEmpresaNova] = useState('');
+
+  const empresaAlvo = empresaId || empresaNova;
 
   const recarregarMateriais = useCallback(async () => {
-    if (!empresaId) {
-      setMateriais([]);
-      setProximoCod(1);
-      return;
-    }
     await executar(async () => {
+      if (!empresaId) {
+        const todos = await listarTodosMateriais();
+        if (isMounted()) setMateriais(todos);
+        return;
+      }
       const [lista, prox] = await Promise.all([
         listarMateriaisDaEmpresa(empresaId),
         proximoCodigo(empresaId)
@@ -51,9 +68,24 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
     recarregarMateriais();
   }, [recarregarMateriais, empresaId]);
 
+  // mostra o próximo código da empresa escolhida no formulário (modo "todas as empresas")
+  useEffect(() => {
+    if (empresaId) return;
+    if (!empresaNova) {
+      setProximoCod(1);
+      return;
+    }
+    let cancelado = false;
+    proximoCodigo(empresaNova)
+      .then((prox) => { if (!cancelado) setProximoCod(prox); })
+      .catch(() => { if (!cancelado) setProximoCod(1); });
+    return () => { cancelado = true; };
+  }, [empresaId, empresaNova]);
+
   const limparForm = useCallback(() => {
     setEditingId(null);
     setFormulario({ nome: '', descricao: '', umb: 'UN', codigo: null });
+    setEmpresaNova('');
     setExibirForm(false);
   }, []);
 
@@ -75,14 +107,18 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
 
   const salvar = useCallback(async (e) => {
     e.preventDefault();
-    if (!formulario.nome.trim() || !empresaId) return;
+    if (!formulario.nome.trim()) return;
+    if (!editingId && !empresaAlvo) {
+      mostrarErro('Selecione a empresa do material.');
+      return;
+    }
 
     const salvou = await executar(async () => {
       if (editingId) {
         await atualizarMaterial(editingId, formulario);
         mostrarSucesso('Material atualizado!');
       } else {
-        await criarMaterial({ empresaId, ...formulario });
+        await criarMaterial({ empresaId: empresaAlvo, ...formulario });
         mostrarSucesso('Material cadastrado!');
       }
     }, { contexto: 'useAdminMateriais.salvar' });
@@ -91,7 +127,7 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
       limparForm();
       await recarregarMateriais();
     }
-  }, [editingId, empresaId, formulario, executar, mostrarSucesso, limparForm, recarregarMateriais]);
+  }, [editingId, empresaAlvo, formulario, executar, mostrarSucesso, mostrarErro, limparForm, recarregarMateriais]);
 
   const remover = useCallback(async (id) => {
     if (!confirmarAcao('Excluir este material?')) return;
@@ -103,17 +139,16 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
   }, [executar, mostrarSucesso, recarregarMateriais]);
 
   const toggleAtivo = useCallback(async (mat) => {
+    // a tabela considera "ativo" quando mat.ativo !== false
+    const estaAtivo = mat.ativo !== false;
     const atualizou = await executar(async () => {
-      await alternarAtivoMaterial(mat.id, !mat.ativo);
-      mostrarSucesso(mat.ativo ? 'Material desativado' : 'Material ativado');
+      await alternarAtivoMaterial(mat.id, !estaAtivo);
+      mostrarSucesso(estaAtivo ? 'Material desativado' : 'Material ativado');
     }, { contexto: 'useAdminMateriais.toggleAtivo' });
     if (atualizou) await recarregarMateriais();
   }, [executar, mostrarSucesso, recarregarMateriais]);
 
   return {
-    loading,
-    feedback,
-    limparFeedback,
     materiais,
     exibirForm,
     editingId,
@@ -128,5 +163,7 @@ export function useAdminMateriais({ executar, mostrarSucesso, mostrarErro, recar
     remover,
     toggleAtivo,
     setExibirForm,
+    empresaNova,
+    setEmpresaNova,
   };
 }

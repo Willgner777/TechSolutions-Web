@@ -20,17 +20,16 @@ export default function MateriaisTab({ admin }) {
     remover,
     toggleAtivo,
     loading,
+    empresaNova,
+    setEmpresaNova,
   } = admin;
 
-  if (!empresaIdSelecionada) {
-    return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-3xl p-8 text-center space-y-3">
-        <Package className="w-12 h-12 text-yellow-500 mx-auto" />
-        <h3 className="text-base font-bold text-yellow-800">Selecione uma Empresa</h3>
-        <p className="text-xs text-yellow-600">Escolha uma empresa para visualizar e cadastrar seus materiais.</p>
-      </div>
-    );
-  }
+  // sem empresa selecionada: mostra os materiais de todas as empresas
+  const modoTodas = !empresaIdSelecionada;
+  const nomeEmpresa = (id) => {
+    const emp = empresas.find(e => e.id === id);
+    return emp?.nome || emp?.nome_fantasia || '-';
+  };
 
   const empresaAtual = empresas.find(e => e.id === empresaIdSelecionada);
 
@@ -44,7 +43,7 @@ export default function MateriaisTab({ admin }) {
             Materiais Cadastrados
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Empresa: <span className="font-semibold text-purple-700">{empresaAtual?.nome || empresaAtual?.nome_fantasia}</span>
+            Empresa: <span className="font-semibold text-purple-700">{modoTodas ? 'Todas as empresas' : (empresaAtual?.nome || empresaAtual?.nome_fantasia)}</span>
           </p>
         </div>
 
@@ -71,6 +70,22 @@ export default function MateriaisTab({ admin }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {modoTodas && !editingId && (
+              <div className="md:col-span-4">
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Empresa *</label>
+                <select
+                  required
+                  value={empresaNova}
+                  onChange={(e) => setEmpresaNova(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-xs font-semibold"
+                >
+                  <option value="">Selecione a empresa do material</option>
+                  {empresas.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.nome || emp.nome_fantasia}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">Código</label>
               <input
@@ -147,6 +162,7 @@ export default function MateriaisTab({ admin }) {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase">
               <th className="py-3.5 px-4 w-20">Cód</th>
+              {modoTodas && <th className="py-3.5 px-4">Empresa</th>}
               <th className="py-3.5 px-4">Material</th>
               <th className="py-3.5 px-4">UMB</th>
               <th className="py-3.5 px-4">Descrição</th>
@@ -161,6 +177,9 @@ export default function MateriaisTab({ admin }) {
                   <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
                     {String(mat.codigo).padStart(2, '0')}
                   </td>
+                  {modoTodas && (
+                    <td className="py-3.5 px-4 text-slate-600">{nomeEmpresa(mat.empresa_id)}</td>
+                  )}
                   <td className="py-3.5 px-4 font-bold text-slate-800">{mat.nome}</td>
                   <td className="py-3.5 px-4 font-semibold text-slate-600">{mat.umb || 'UN'}</td>
                   <td className="py-3.5 px-4 text-slate-500">{mat.descricao || '-'}</td>
@@ -198,8 +217,8 @@ export default function MateriaisTab({ admin }) {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-400">
-                  Nenhum material cadastrado para esta empresa.
+                <td colSpan={modoTodas ? 7 : 6} className="py-8 text-center text-slate-400">
+                  {modoTodas ? 'Nenhum material cadastrado.' : 'Nenhum material cadastrado para esta empresa.'}
                 </td>
               </tr>
             )}

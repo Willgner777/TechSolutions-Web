@@ -40,21 +40,15 @@ export default function AdminDevPage() {
     const check = async () => {
       const start = performance.now();
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const headers = {
-          apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${session?.access_token || process.env.REACT_APP_SUPABASE_ANON_KEY}`
-        };
-        const res = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/rest/v1/`, { headers });
+        // consulta leve e real (a raiz /rest/v1/ responde 401 para a chave anon e sujava o console)
+        const { error } = await supabase.from('empresas').select('id', { head: true, count: 'exact' }).limit(1);
         const latency = Math.round(performance.now() - start);
-        setHealth({ status: res.ok ? 'ok' : 'degraded', latency });
+        setHealth({ status: error ? 'degraded' : 'ok', latency });
       } catch {
         setHealth({ status: 'error', latency: null });
       }
     };
     check();
-    const iv = setInterval(check, 30000);
-    return () => clearInterval(iv);
   }, []);
 
   return (

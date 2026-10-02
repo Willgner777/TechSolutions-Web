@@ -61,3 +61,15 @@ export async function excluirMaterial(id) {
   const { error } = await cliente.from('materiais').delete().eq('id', id);
   resolverResposta({ data: null, error }, 'materiaisService.excluirMaterial');
 }
+
+/** Super dev: lista os materiais de TODAS as empresas. */
+export async function listarTodosMateriais() {
+  const cliente = getClient();
+  const { data, error } = await cliente
+    .from('materiais')
+    .select('*')
+    .order('empresa_id', { ascending: true })
+    .order('codigo', { ascending: true });
+  resolverResposta({ data, error }, 'materiaisService.listarTodosMateriais');
+  return data ?? [];
+}
