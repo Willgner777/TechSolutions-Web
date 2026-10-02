@@ -30,7 +30,7 @@ export default function FuncionariosPage({ userProfile }) {
     limparFormulario,
     salvar,
     remover,
-  } = useFuncionarios(userProfile?.empresa_id);
+  } = useFuncionarios(userProfile?.empresa_id, userProfile?.role);
 
   const confirmarRemocao = useCallback(
     (id) => {
@@ -201,6 +201,18 @@ export default function FuncionariosPage({ userProfile }) {
                   <option value="Ativo">Ativo</option>
                   <option value="Inativo">Inativo</option>
                   <option value="Afastado">Afastado</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Permissão</label>
+                <select
+                  value={formulario.role}
+                  onChange={(e) => atualizarCampo('role', e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs"
+                >
+                  <option value="funcionario">funcionario</option>
+                  <option value="admin_empresa">admin_empresa</option>
                 </select>
               </div>
             </div>

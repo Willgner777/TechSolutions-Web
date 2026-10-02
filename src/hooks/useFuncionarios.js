@@ -5,6 +5,7 @@ import { listarContratosResumoDaEmpresa } from '../services/contratosService';
 import { atualizarPerfil, listarFuncionariosDaEmpresa } from '../services/perfisService';
 import { moverParaLixeira } from '../services/lixeiraService';
 import { atualizarCredenciaisAuth, cadastrarUsuarioComPerfil } from '../services/usuariosService';
+import { podeUsarCadastros } from '../utils/utils';
 
 const FORMULARIO_INICIAL = {
   nome: '',
@@ -17,6 +18,7 @@ const FORMULARIO_INICIAL = {
   dataAdmissao: '',
   dataDemissao: '',
   status: 'Ativo',
+  role: 'funcionario',
 };
 
 /**
@@ -42,8 +44,9 @@ const montarDadosDoPerfil = (f) => ({
  *
  * @param {string | null} [empresaIdDoPerfil] - Empresa do usuário logado, quando já conhecida
  *   (evita consultas extras). Se ausente, é descoberta pelo usuário autenticado.
+ * @param {string | null} [roleDoUsuarioAtual] - Role do usuário logado.
  */
-export function useFuncionarios(empresaIdDoPerfil = null) {
+export function useFuncionarios(empresaIdDoPerfil = null, roleDoUsuarioAtual = null) {
   const { loading, feedback, executar, mostrarSucesso, mostrarErro, limparFeedback, isMounted } = useStatusOperacao();
 
   const [busca, setBusca] = useState('');
@@ -106,6 +109,7 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
       dataAdmissao: func.data_admissao || '',
       dataDemissao: func.data_demissao || '',
       status: func.status || 'Ativo',
+      role: func.role || 'funcionario',
     });
     setExibirForm(true);
   }, []);
@@ -119,10 +123,16 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
         return;
       }
 
+      const podeDefinirRole = podeUsarCadastros(roleDoUsuarioAtual);
+      const roleParaCriar = podeDefinirRole ? (formulario.role || 'funcionario') : 'funcionario';
+      const roleParaAtualizar = podeDefinirRole ? (formulario.role || 'funcionario') : undefined;
+
       const salvou = await executar(
         async () => {
           if (editingId) {
-            await atualizarPerfil(editingId, montarDadosDoPerfil(formulario));
+            const dadosPerfil = montarDadosDoPerfil(formulario);
+            if (roleParaAtualizar) dadosPerfil.role = roleParaAtualizar;
+            await atualizarPerfil(editingId, dadosPerfil);
             if (formulario.senha.trim()) {
               await atualizarCredenciaisAuth(editingId, { senha: formulario.senha });
             }
@@ -133,8 +143,8 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
             email: formulario.email,
             senha: formulario.senha,
             nome: formulario.nome,
-            role: 'funcionario',
-            dadosPerfil: { ...montarDadosDoPerfil(formulario), role: 'funcionario', empresa_id: empresaId },
+            role: roleParaCriar,
+            dadosPerfil: { ...montarDadosDoPerfil(formulario), role: roleParaCriar, empresa_id: empresaId },
           });
           mostrarSucesso('Funcionário cadastrado com sucesso!');
         },
@@ -146,7 +156,7 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
         await recarregar();
       }
     },
-    [editingId, empresaId, formulario, executar, mostrarSucesso, mostrarErro, limparFormulario, recarregar]
+    [editingId, empresaId, formulario, executar, mostrarSucesso, mostrarErro, limparFormulario, recarregar, roleDoUsuarioAtual]
   );
 
   const remover = useCallback(

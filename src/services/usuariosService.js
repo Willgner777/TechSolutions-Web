@@ -1,4 +1,4 @@
-import { supabase, criarClienteIsolado } from './supabaseClient';
+import { supabase, criarClienteIsolado, supabaseAdmin } from './supabaseClient';
 import { resolverResposta } from './errors';
 
 /**
@@ -53,10 +53,16 @@ export async function atualizarCredenciaisAuth(userId, { email, senha } = {}) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const clienteParaAcao = (user?.id === userId) ? supabase : supabaseAdmin;
+
+  if (!clienteParaAcao) {
+    throw new Error('Permissão insuficiente ou configuração de admin ausente (REACT_APP_SUPABASE_SERVICE_ROLE_KEY).');
+  }
+
   const resposta =
     user?.id === userId
       ? await supabase.auth.updateUser(atributos)
-      : await supabase.auth.admin.updateUserById(userId, atributos);
+      : await supabaseAdmin.auth.admin.updateUserById(userId, atributos);
 
   resolverResposta(resposta, 'usuariosService.atualizarCredenciaisAuth');
 }

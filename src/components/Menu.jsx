@@ -13,6 +13,10 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menuCadastrosOpen, setMenuCadastrosOpen] = useState(true);
 
+  const role = usuarioAtual?.role;
+  const podeUsar = podeUsarCadastros(role);
+  const podeVer = podeUsar || role === 'funcionario';
+
   return (
     <>
       {/* BOTÃO MOBILE PARA ABRIR O MENU */}
@@ -67,21 +71,22 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
               Navegação
             </span>
 
-            {/* PASTA: CADASTROS — somente admin da empresa */}
-            {podeUsarCadastros(usuarioAtual?.role) && (
+            {/* PASTA: CADASTROS — visível para funcionário (somente leitura) e admin */ }
+            {podeVer && (
             <div>
               <button
-                onClick={() => setMenuCadastrosOpen(!menuCadastrosOpen)}
+                onClick={() => podeUsar && setMenuCadastrosOpen(!menuCadastrosOpen)}
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                   menuCadastrosOpen ? 'bg-purple-50/60 text-purple-800' : 'text-slate-600 hover:bg-slate-50'
-                }`}
+                } ${!podeUsar ? 'opacity-70' : ''}`}
+                title={!podeUsar ? 'Somente administradores podem cadastrar' : ''}
               >
                 <div className="flex items-center gap-3">
-                  <FolderTree className="w-4 h-4 text-purple-600" />
+                  <FolderTree className={`w-4 h-4 ${podeUsar ? 'text-purple-600' : 'text-slate-400'}`} />
                   <span>Cadastros</span>
                 </div>
                 {menuCadastrosOpen ? (
-                  <ChevronDown className="w-4 h-4 text-purple-600" />
+                  <ChevronDown className={`w-4 h-4 ${podeUsar ? 'text-purple-600' : 'text-slate-400'}`} />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
@@ -92,14 +97,17 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
                 <div className="ml-4 pl-3 border-l-2 border-purple-100 mt-1 space-y-1">
                   <button
                     onClick={() => {
+                      if (!podeUsar) return;
                       setActiveTab('funcionarios');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    disabled={!podeUsar}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                       activeTab === 'funcionarios' 
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' 
                         : 'text-slate-600 hover:bg-purple-50 hover:text-purple-700'
-                    }`}
+                    } ${!podeUsar ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={!podeUsar ? 'Somente administradores podem cadastrar' : ''}
                   >
                     <Users className="w-4 h-4" />
                     <span>Funcionários</span>
@@ -107,14 +115,17 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
 
                   <button
                     onClick={() => {
+                      if (!podeUsar) return;
                       setActiveTab('contratos');
                       setSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    disabled={!podeUsar}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                       activeTab === 'contratos' 
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' 
                         : 'text-slate-600 hover:bg-purple-50 hover:text-purple-700'
-                    }`}
+                    } ${!podeUsar ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                    title={!podeUsar ? 'Somente administradores podem cadastrar' : ''}
                   >
                     <FileText className="w-4 h-4" />
                     <span>Contratos</span>
