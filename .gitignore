@@ -24,11 +24,3 @@ Thumbs.db
 # editores
 .vscode/
 .idea/
-
-# Scripts Python locais
-__pycache__/
-*.py
-
-# Scripts Python locais
-__pycache__/
-*.py

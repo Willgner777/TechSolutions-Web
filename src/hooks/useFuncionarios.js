@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../services/supabaseClient';
 import { useStatusOperacao } from './useStatusOperacao';
 import { obterEmpresaIdDoUsuarioAtual } from '../services/authService';
 import { listarContratosResumoDaEmpresa } from '../services/contratosService';
@@ -20,6 +19,11 @@ const FORMULARIO_INICIAL = {
   status: 'Ativo',
 };
 
+/**
+ * Converte o formulário nas colunas da tabela `perfis` (campos comuns a criar e editar).
+ * @param {typeof FORMULARIO_INICIAL} f
+ * @returns {object}
+ */
 const montarDadosDoPerfil = (f) => ({
   nome: f.nome,
   email: f.email,
@@ -33,6 +37,12 @@ const montarDadosDoPerfil = (f) => ({
   ativo: f.status === 'Ativo',
 });
 
+/**
+ * Regras e dados da tela de Funcionários: listagem, busca, cadastro, edição e remoção.
+ *
+ * @param {string | null} [empresaIdDoPerfil] - Empresa do usuário logado, quando já conhecida
+ *   (evita consultas extras). Se ausente, é descoberta pelo usuário autenticado.
+ */
 export function useFuncionarios(empresaIdDoPerfil = null) {
   const { loading, feedback, executar, mostrarSucesso, mostrarErro, limparFeedback, isMounted } = useStatusOperacao();
 
@@ -113,26 +123,9 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
         async () => {
           if (editingId) {
             await atualizarPerfil(editingId, montarDadosDoPerfil(formulario));
-
-            if (formulario.senha && formulario.senha.trim().length >= 6) {
-              try {
-                const { error: fnError } = await supabase.functions.invoke('update-user-password', {
-                  body: { userId: editingId, newPassword: formulario.senha.trim() },
-                });
-                if (fnError) console.warn('Aviso ao redefinir senha via Edge Function:', fnError);
-              } catch (errSenha) {
-                console.error('Falha ao tentar redefinir a senha do usuário:', errSenha);
-              }
-            }
-
-            mostrarSucesso('Funcionário atualizado com sucesso!');
+            mostrarSucesso('Funcionário atualizado!');
             return;
           }
-
-          if (!formulario.senha || formulario.senha.trim().length < 6) {
-            throw new Error('A senha deve ter no mínimo 6 caracteres.');
-          }
-
           await cadastrarUsuarioComPerfil({
             email: formulario.email,
             senha: formulario.senha,
@@ -140,7 +133,6 @@ export function useFuncionarios(empresaIdDoPerfil = null) {
             role: 'funcionario',
             dadosPerfil: { ...montarDadosDoPerfil(formulario), role: 'funcionario', empresa_id: empresaId },
           });
-
           mostrarSucesso('Funcionário cadastrado com sucesso!');
         },
         { contexto: 'useFuncionarios.salvar' }
