@@ -9,6 +9,7 @@ import { podeUsarCadastros } from '../utils/utils';
 // Páginas carregadas sob demanda: só são baixadas quando o usuário abre a aba.
 const FuncionariosPage = lazy(() => import('../pages/FuncionariosPage'));
 const ContratosPage = lazy(() => import('../pages/ContratosPage'));
+const MateriaisPage = lazy(() => import('../pages/MateriaisPage'));
 
 /**
  * Layout do painel principal para usuários autenticados:
@@ -38,6 +39,7 @@ export default function AuthenticatedLayout({ userProfile, onLogout }) {
           <Suspense fallback={<PageLoader />}>
             {podeCadastros && activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
             {podeCadastros && activeTab === 'contratos' && <ContratosPage userProfile={userProfile} />}
+            {podeCadastros && activeTab === 'materiais' && <MateriaisPage userProfile={userProfile} />}
           </Suspense>
         </ErrorBoundary>
       </main>

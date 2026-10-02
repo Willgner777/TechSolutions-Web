@@ -1,7 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { ShieldCheck, Building2, Edit, X, Search, Power, Trash, UserPlus } from 'lucide-react';
+import { ShieldCheck, Building2, Edit, X, Search, Power, Trash, UserPlus, Download, KeyRound } from 'lucide-react';
 import OpcoesContrato from '../OpcoesContrato';
+import { exportarCSV } from '../../utils/utils';
 
 /**
  * Aba "Utilizadores": filtros, cadastro, edição e listagem de usuários da plataforma.
@@ -281,6 +282,11 @@ export default function UsuariosTab({ admin }) {
           <option value="inativo">Inativos</option>
         </select>
       </div>
+      <div className="flex justify-end">
+        <button onClick={() => exportarCSV(usuariosFiltrados, 'utilizadores.csv')} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-2xl text-xs font-semibold hover:bg-slate-200">
+          <Download className="w-4 h-4" /> Exportar CSV
+        </button>
+      </div>
 
       {/* TABELA DE USUÁRIOS */}
       <div className="overflow-x-auto rounded-2xl border border-slate-200">
@@ -331,6 +337,13 @@ export default function UsuariosTab({ admin }) {
                 <td className="py-4 px-5 text-right space-x-2">
                   <button onClick={() => prepararEdicaoUsuario(usr)} className="p-2 bg-slate-100 text-purple-700 rounded-xl border border-slate-200">
                     <Edit className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => {
+                    const nova = Math.random().toString(36).slice(-8) + 'A1';
+                    setSenhaUsuario(nova);
+                    prepararEdicaoUsuario(usr);
+                  }} className="p-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200" title="Reset rápido de senha">
+                    <KeyRound className="w-4 h-4" />
                   </button>
                   <button onClick={() => confirmarMoverUsuarioParaLixeira(usr.id)} className="p-2 bg-red-50 text-red-600 rounded-xl border border-red-200">
                     <Trash className="w-4 h-4" />

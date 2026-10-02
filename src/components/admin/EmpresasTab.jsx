@@ -1,6 +1,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Building2, Users, Edit, Trash2, X, Power, GitBranch, FileText } from 'lucide-react';
+import { Building2, Users, Edit, Trash2, X, Power, GitBranch, FileText, Download } from 'lucide-react';
+import { exportarCSV } from '../../utils/utils';
+import MateriaisTab from './MateriaisTab';
 
 /**
  * Aba "Empresas & Filiais": cadastro, edição, ativação e listagem.
@@ -15,6 +17,8 @@ export default function EmpresasTab({ admin }) {
     empresas,
     empresasMatrizes,
     excluirEmpresa,
+    empresaIdSelecionada,
+    setEmpresaIdSelecionada,
     exibirFormEmpresa,
     limparFormEmpresa,
     loading,
@@ -177,7 +181,13 @@ export default function EmpresasTab({ admin }) {
               const qtdContratos = contratosDaEmpresa(emp.id).length;
 
               return (
-                <tr key={emp.id} className="hover:bg-purple-50/30">
+                <tr 
+                  key={emp.id} 
+                  className={`hover:bg-purple-50/30 cursor-pointer transition-colors ${
+                    empresaIdSelecionada === emp.id ? 'bg-purple-50 border-l-4 border-purple-600' : ''
+                  }`}
+                  onClick={() => setEmpresaIdSelecionada(emp.id)}
+                >
                   <td className="py-4 px-5">
                     <div className="font-bold text-slate-800">{emp.nome || emp.nome_fantasia}</div>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -242,6 +252,14 @@ export default function EmpresasTab({ admin }) {
           </tbody>
         </table>
       </div>
+      <div className="flex justify-end">
+        <button onClick={() => exportarCSV(empresas, 'empresas.csv')} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-2xl text-xs font-semibold hover:bg-slate-200">
+          <Download className="w-4 h-4" /> Exportar CSV
+        </button>
+      </div>
+
+      {/* ABA DE MATERIAIS DA EMPRESA SELECIONADA */}
+      {empresaIdSelecionada && <MateriaisTab admin={admin} />}
     </div>
   );
 }

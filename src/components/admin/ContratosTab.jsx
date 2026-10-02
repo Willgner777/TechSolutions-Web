@@ -1,9 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Building2, Edit, X, Search, Trash, FileText } from 'lucide-react';
+import { Building2, Edit, X, Search, Trash, FileText, Download } from 'lucide-react';
 import { UFS } from '../../utils/estados';
 import { formatarTimestampBR } from '../../utils/formatters';
 import { confirmarAcao } from '../../utils/browser';
+import { exportarCSV } from '../../utils/utils';
 
 /**
  * Aba "Contratos": cadastro, edição, filtros e listagem de contratos.
@@ -195,6 +196,11 @@ export default function ContratosTab({ admin }) {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="flex justify-end">
+        <button onClick={() => exportarCSV(contratosFiltrados, 'contratos.csv')} className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-2xl text-xs font-semibold hover:bg-slate-200">
+          <Download className="w-4 h-4" /> Exportar CSV
+        </button>
       </div>
     </div>
   );

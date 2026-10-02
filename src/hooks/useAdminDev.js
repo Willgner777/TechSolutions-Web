@@ -5,6 +5,7 @@ import { useAdminLixeira } from './admin/useAdminLixeira';
 import { useAdminEmpresas } from './admin/useAdminEmpresas';
 import { useAdminContratos } from './admin/useAdminContratos';
 import { useAdminUsuarios } from './admin/useAdminUsuarios';
+import { useAdminMateriais } from './admin/useAdminMateriais';
 import { sair } from '../services/authService';
 
 /**
@@ -32,6 +33,14 @@ export function useAdminDev() {
     usuarios: dados.usuarios,
     contratosDaEmpresa: dados.contratosDaEmpresa,
     moverParaLixeira: lixeira.moverParaLixeira,
+  });
+
+  const materiaisCtl = useAdminMateriais({
+    executar,
+    mostrarSucesso,
+    mostrarErro,
+    recarregar: carregarDadosGlobais,
+    getEmpresaId: () => empresasCtl.empresaIdSelecionada,
   });
 
   const contratosCtl = useAdminContratos({
@@ -66,6 +75,7 @@ export function useAdminDev() {
     ...dados,
     ...lixeira,
     ...empresasCtl,
+    ...materiaisCtl,
     ...contratosCtl,
     ...usuariosCtl,
   };

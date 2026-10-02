@@ -1,10 +1,11 @@
-import React from 'react';
-import { ShieldCheck, Building2, Users, RefreshCw, LogOut, Trash, FileText } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ShieldCheck, Building2, Users, RefreshCw, LogOut, Trash, FileText, Activity, Package } from 'lucide-react';
 import FeedbackBanner from '../components/FeedbackBanner';
 import UsuariosTab from '../components/admin/UsuariosTab';
 import EmpresasTab from '../components/admin/EmpresasTab';
 import ContratosTab from '../components/admin/ContratosTab';
 import LixeiraTab from '../components/admin/LixeiraTab';
+import MateriaisTab from '../components/admin/MateriaisTab';
 import { useAdminDev } from '../hooks/useAdminDev';
 
 /**
@@ -29,12 +30,30 @@ export default function AdminDevPage() {
     totalLixeira,
     totalSemEmpresa,
     usuarios,
+    materiais,
   } = admin;
+
+  const [health, setHealth] = useState({ status: 'checking', latency: null });
+
+  useEffect(() => {
+    const check = async () => {
+      const start = performance.now();
+      try {
+        const res = await fetch(`${process.env.REACT_APP_SUPABASE_URL}/rest/v1/`);
+        const latency = Math.round(performance.now() - start);
+        setHealth({ status: res.ok ? 'ok' : 'degraded', latency });
+      } catch {
+        setHealth({ status: 'error', latency: null });
+      }
+    };
+    check();
+    const iv = setInterval(check, 30000);
+    return () => clearInterval(iv);
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-4 sm:p-8 lg:p-12">
       <div className="max-w-7xl mx-auto space-y-8">
-        
         {/* CABEÇALHO */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white border border-slate-200 p-6 sm:p-8 rounded-3xl gap-6 shadow-sm">
           <div className="flex items-center gap-4">
@@ -60,7 +79,21 @@ export default function AdminDevPage() {
         </div>
 
         {/* RESUMO GERAL */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-2">
+              <Activity className={`w-4 h-4 ${health.status==='ok'?'text-emerald-600':health.status==='degraded'?'text-amber-600':'text-red-600'}`} /> Supabase
+            </p>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{health.status==='checking'?'...' : health.status==='ok'?'OK':'ERRO'}</p>
+            <p className="text-[11px] text-slate-500">{health.latency?`${health.latency}ms`:'indisponível'}</p>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-2">
+              <Package className="w-4 h-4 text-purple-600" /> Materiais
+            </p>
+            <p className="text-2xl font-bold text-slate-900 mt-2">{materiais?.length ?? 0}</p>
+            <p className="text-[11px] text-slate-500">cadastrados na empresa selecionada</p>
+          </div>
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <p className="text-xs font-semibold text-slate-500 uppercase flex items-center gap-2">
               <Building2 className="w-4 h-4 text-purple-600" /> Empresas
@@ -114,6 +147,15 @@ export default function AdminDevPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('materiais')}
+            className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer ${
+              activeTab === 'materiais' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-600 hover:bg-purple-50'
+            }`}
+          >
+            <Package className="w-4 h-4" /> Materiais ({materiais?.length ?? 0})
+          </button>
+
+          <button
             onClick={() => setActiveTab('contratos')}
             className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold cursor-pointer ${
               activeTab === 'contratos' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-600 hover:bg-purple-50'
@@ -134,6 +176,7 @@ export default function AdminDevPage() {
 
         {activeTab === 'usuarios' && <UsuariosTab admin={admin} />}
         {activeTab === 'empresas' && <EmpresasTab admin={admin} />}
+        {activeTab === 'materiais' && <MateriaisTab admin={admin} />}
         {activeTab === 'contratos' && <ContratosTab admin={admin} />}
         {activeTab === 'lixeira' && <LixeiraTab admin={admin} />}
       </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { 
   Users, ChevronDown, ChevronRight, LogOut, 
-  FolderTree, Code, Menu as MenuIcon, X, FileText 
+  FolderTree, Code, Menu as MenuIcon, X, FileText, Package 
 } from 'lucide-react';
 import { podeUsarCadastros } from '../utils/utils';
 
@@ -133,6 +133,26 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
                 </div>
               )}
             </div>
+            )}
+
+            {/* SUBMENU ADICIONAL: MATERIAIS (para admin_empresa) */}
+            {podeUsar && menuCadastrosOpen && (
+              <div className="ml-4 pl-3 border-l-2 border-purple-100 mt-1 space-y-1">
+                <button
+                  onClick={() => {
+                    setActiveTab('materiais');
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'materiais' 
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' 
+                      : 'text-slate-600 hover:bg-purple-50 hover:text-purple-700'
+                  }`}
+                >
+                  <Package className="w-4 h-4" />
+                  <span>Materiais</span>
+                </button>
+              </div>
             )}
 
             {/* BOTÃO EXCLUSIVO PARA SUPER DEV */}

@@ -26,6 +26,7 @@ export function useAdminEmpresas({
 }) {
   const [exibirFormEmpresa, setExibirFormEmpresa] = useState(false);
   const [editingEmpresaId, setEditingEmpresaId] = useState(null);
+  const [empresaIdSelecionada, setEmpresaIdSelecionada] = useState('');
   const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [cnpjEmpresa, setCnpjEmpresa] = useState('');
   const [ufEmpresa, setUfEmpresa] = useState('SP');
@@ -137,6 +138,8 @@ export function useAdminEmpresas({
     exibirFormEmpresa,
     setExibirFormEmpresa,
     editingEmpresaId,
+    empresaIdSelecionada,
+    setEmpresaIdSelecionada,
     nomeEmpresa,
     setNomeEmpresa,
     cnpjEmpresa,

@@ -49,20 +49,20 @@ export async function atualizarCredenciaisAuth(userId, { email, senha } = {}) {
   if (typeof senha === 'string' && senha.trim()) atributos.password = senha.trim();
   if (!Object.keys(atributos).length) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user }, error: sessionError } = await supabase.auth.getUser();
+  if (sessionError) throw sessionError;
 
-  const clienteParaAcao = (user?.id === userId) ? supabase : supabaseAdmin;
-
-  if (!clienteParaAcao) {
-    throw new Error('Permissão insuficiente ou configuração de admin ausente (REACT_APP_SUPABASE_SERVICE_ROLE_KEY).');
+  if (user?.id === userId) {
+    const resposta = await supabase.auth.updateUser(atributos);
+    resolverResposta(resposta, 'usuariosService.atualizarCredenciaisAuth');
+    return;
   }
 
-  const resposta =
-    user?.id === userId
-      ? await supabase.auth.updateUser(atributos)
-      : await supabaseAdmin.auth.admin.updateUserById(userId, atributos);
+  // Admin: usa cliente com service_role direto (funciona em localhost)
+  if (!supabaseAdmin) {
+    throw new Error('Service role não configurada. Defina REACT_APP_SUPABASE_SERVICE_ROLE_KEY no .env');
+  }
 
-  resolverResposta(resposta, 'usuariosService.atualizarCredenciaisAuth');
+  const resposta = await supabaseAdmin.auth.admin.updateUserById(userId, atributos);
+  resolverResposta(resposta, 'usuariosService.atualizarCredenciaisAuth.admin');
 }
