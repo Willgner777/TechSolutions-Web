@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { 
   Users, ChevronDown, ChevronRight, LogOut, 
   FolderTree, Code, Menu as MenuIcon, X, FileText 
 } from 'lucide-react';
 
+/**
+ * Menu lateral (sidebar) da aplicação, com versão móvel retrátil.
+ */
 export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, abrirConsoleDev }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menuCadastrosOpen, setMenuCadastrosOpen] = useState(true);
@@ -158,3 +162,15 @@ export default function Menu({ usuarioAtual, activeTab, setActiveTab, onLogout, 
     </>
   );
 }
+
+Menu.propTypes = {
+  usuarioAtual: PropTypes.shape({
+    role: PropTypes.string,
+    nome: PropTypes.string,
+    email: PropTypes.string,
+  }),
+  activeTab: PropTypes.string.isRequired,
+  setActiveTab: PropTypes.func.isRequired,
+  onLogout: PropTypes.func.isRequired,
+  abrirConsoleDev: PropTypes.func.isRequired,
+};

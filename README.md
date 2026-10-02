@@ -1,70 +1,64 @@
-# Getting Started with Create React App
+# Gestão de Frota (WillTech)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Aplicação React (Create React App) com Supabase para gestão de funcionários,
+contratos, empresas e usuários da plataforma.
 
-## Available Scripts
+## Requisitos
 
-In the project directory, you can run:
+- Node.js 18+ e npm
+- Um projeto Supabase com as tabelas `perfis`, `empresas` e `contratos`
 
-### `npm start`
+## Rodando localmente
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```bash
+npm install
+npm install prop-types      # necessário para a validação de props
+cp .env.example .env        # no Windows: copy .env.example .env
+# preencha o .env (veja abaixo) e então:
+npm start
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+A aplicação abre em http://localhost:3000.
 
-### `npm test`
+## Variáveis de ambiente (`.env`)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+| Variável | Descrição |
+| --- | --- |
+| `REACT_APP_SUPABASE_URL` | URL do projeto Supabase |
+| `REACT_APP_SUPABASE_ANON_KEY` | Chave pública (anon/publishable) do Supabase |
 
-### `npm run build`
+Se alguma estiver ausente, a aplicação mostra uma tela "Configuração incompleta"
+dizendo exatamente quais variáveis faltam. O `.env` está no `.gitignore`.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Comandos
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+| Comando | O que faz |
+| --- | --- |
+| `npm start` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção na pasta `build/` |
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Estrutura de `src/`
 
-### `npm run eject`
+```
+src/
+├── components/   componentes reutilizáveis e de layout
+│   └── admin/    abas do Console Super Dev
+├── pages/        telas (Login, Funcionários, Contratos, AdminDev)
+├── hooks/        regras de negócio e estado (useFuncionarios, useContratos, useAdminDev...)
+│   └── admin/    hooks específicos de cada aba do Console Super Dev
+├── services/     acesso ao Supabase (única camada que fala com o banco)
+├── utils/        funções puras (formatadores, logger, constantes)
+├── styles/       index.css (Tailwind)
+├── App.js        rotas (com code splitting)
+└── index.js      ponto de entrada
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Regra de dependência: `pages/components` → `hooks` → `services` → `supabaseClient`.
+Páginas não chamam o Supabase diretamente.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Convenções
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Componentes em PascalCase `.jsx`; hooks `useXxx.js`.
+- Erros de operações assíncronas passam por `useStatusOperacao` (loading, feedback e log).
+- Logs via `utils/logger.js` (sem `console.log` solto).
+- Funções utilitárias e regras complexas documentadas em JSDoc.

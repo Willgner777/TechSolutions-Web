@@ -1,23 +1,15 @@
 import React, { useState } from 'react';
-import { supabase } from './Admbases';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { entrarComEmailESenha } from '../services/authService';
+import { buscarRoleDoPerfil } from '../services/perfisService';
+import { traduzirErroLogin } from '../utils/mensagensAuth';
+import { logger } from '../utils/logger';
 
-const traduzirErroLogin = (error) => {
-  const msg = error?.message || '';
-
-  if (msg === 'Invalid login credentials') return 'E-mail ou senha incorretos.';
-  if (msg === 'Email not confirmed') return 'E-mail ainda não confirmado. Verifique a caixa de entrada.';
-  if (error?.status === 429 || error?.code === 'over_request_rate_limit') {
-    return 'Muitas tentativas de acesso. Aguarde um instante e tente novamente.';
-  }
-  if (msg === 'Failed to fetch' || error?.name === 'AuthRetryableFetchError') {
-    return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
-  }
-
-  return msg || 'Erro ao realizar login.';
-};
-
-export default function LoginPage({ onLoginSucesso }) {
+/**
+ * Tela de login por e-mail e senha.
+ * Após autenticar, redireciona o Super Dev para o console e os demais usuários para o painel.
+ */
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -36,11 +28,7 @@ export default function LoginPage({ onLoginSucesso }) {
     setErrorMessage('');
 
     try {
-      // 1. Autenticação no Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+      const { data: authData, error: authError } = await entrarComEmailESenha(email, password);
 
       if (authError) {
         setErrorMessage(traduzirErroLogin(authError));
@@ -48,28 +36,17 @@ export default function LoginPage({ onLoginSucesso }) {
         return;
       }
 
-      // 2. Buscar o perfil para saber a permissão (Role) do usuário
-      if (authData?.user) {
-        const { data: perfil } = await supabase
-          .from('perfis')
-          .select('role')
-          .eq('id', authData.user.id)
-          .single();
-
-        // 3. Se tiver callback de login, chama ele, senão redireciona
-        if (onLoginSucesso) {
-          onLoginSucesso(perfil);
-        } else {
-          // Se for super_dev abre a console dev, senão vai para o painel principal
-          if (perfil?.role === 'super_dev') {
-            window.location.href = '/admin-dev';
-          } else {
-            window.location.href = '/';
-          }
-        }
+      if (!authData?.user) {
+        setErrorMessage('Não foi possível concluir o login. Tente novamente.');
+        setLoading(false);
+        return;
       }
 
+      // A permissão (role) define para onde o usuário é levado após o login.
+      const perfil = await buscarRoleDoPerfil(authData.user.id);
+      window.location.href = perfil?.role === 'super_dev' ? '/admin-dev' : '/';
     } catch (err) {
+      logger.error('LoginPage', 'Falha inesperada no login.', err);
       setErrorMessage(traduzirErroLogin(err));
       setLoading(false);
     }

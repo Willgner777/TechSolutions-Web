@@ -1,159 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './Admbases';
-import LoginPage from './LoginPage';
-import Menu from './Menu';
-import AdminDevPage from './AdminDevPage';
-import FuncionariosPage from './FuncionariosPage'; // Tela de cadastro de funcionários
-import ContratosPage from './Contratospage'; // Tela de cadastro de contratos (nome do arquivo conforme o seu projeto)
+import { useAuthSession } from './hooks/useAuthSession';
+import TelaCarregando from './components/TelaCarregando';
+import TelaAcessoBloqueado from './components/TelaAcessoBloqueado';
 
-async function carregarPerfil(userId) {
-  const { data: perfil, error } = await supabase
-    .from('perfis')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
+// Code splitting: cada rota é baixada apenas quando necessária.
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const AdminDevPage = lazy(() => import('./pages/AdminDevPage'));
+const AuthenticatedLayout = lazy(() => import('./components/AuthenticatedLayout'));
 
-  if (error) throw error;
-  if (!perfil) return null;
+const ROTA_ADMIN_DEV = '/admin-dev';
+const ROTA_DASHBOARD = '/dashboard';
+const ROTA_LOGIN = '/login';
 
-  let empresa = null;
-  if (perfil.empresa_id) {
-    const { data } = await supabase
-      .from('empresas')
-      .select('nome, plano, ativo')
-      .eq('id', perfil.empresa_id)
-      .maybeSingle();
-    empresa = data || null;
-  }
-  return { ...perfil, empresas: empresa };
-}
-
-function TelaCarregando() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-950 flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-sm font-medium text-purple-200/80">A carregar WillTech Solutions...</p>
-      </div>
-    </div>
-  );
-}
-
-function TelaAcessoBloqueado({ mensagem }) {
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-6 font-sans">
-      <div className="max-w-md w-full space-y-5 text-center">
-        <div className="w-12 h-12 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
-          <span className="text-white font-black text-xl tracking-tighter">W</span>
-        </div>
-        <h1 className="text-2xl font-bold text-slate-800">Acesso indisponível</h1>
-        <div className="p-3.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl">{mensagem}</div>
-        <button
-          onClick={() => supabase.auth.signOut()}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3.5 px-4 rounded-2xl shadow-lg transition-all text-sm cursor-pointer"
-        >
-          Voltar ao login
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Layout Autenticado da Aplicação Principal
-function PainelLayout({ userProfile, onLogout, onAbrirConsoleDev }) {
-  const [activeTab, setActiveTab] = useState('funcionarios');
-
-  return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
-      {/* Menu Sidebar Lateral */}
-      <Menu
-        usuarioAtual={userProfile}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onLogout={onLogout}
-        abrirConsoleDev={onAbrirConsoleDev}
-      />
-
-      {/* Conteúdo dinâmico de acordo com a aba selecionada no Menu */}
-      <main className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        {activeTab === 'funcionarios' && <FuncionariosPage userProfile={userProfile} />}
-        {activeTab === 'contratos' && <ContratosPage userProfile={userProfile} />}
-      </main>
-    </div>
-  );
-}
-
+/**
+ * Raiz da aplicação: controla sessão, bloqueios de acesso e rotas.
+ */
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [erroPerfil, setErroPerfil] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [visaoDev, setVisaoDev] = useState(false);
-  const usuarioCarregado = useRef(null);
-
-  useEffect(() => {
-    let ativo = true;
-
-    const aplicarSessao = async (sess) => {
-      if (!ativo) return;
-
-      if (!sess) {
-        usuarioCarregado.current = null;
-        setSession(null);
-        setUserProfile(null);
-        setErroPerfil('');
-        setLoading(false);
-        setVisaoDev(false);
-        return;
-      }
-
-      setSession(sess);
-
-      if (usuarioCarregado.current === sess.user.id) return;
-
-      setLoading(true);
-      try {
-        const perfil = await carregarPerfil(sess.user.id);
-        if (!ativo) return;
-        usuarioCarregado.current = sess.user.id;
-        setUserProfile(perfil);
-        setErroPerfil(perfil ? '' : 'O seu utilizador não possui um perfil registado.');
-        
-        // Se for super_dev, pode iniciar na visão dev se desejar
-        if (perfil?.role === 'super_dev') {
-          setVisaoDev(true);
-        }
-      } catch (err) {
-        if (!ativo) return;
-        setUserProfile(null);
-        setErroPerfil('Não foi possível carregar o seu perfil: ' + err.message);
-      } finally {
-        if (ativo) setLoading(false);
-      }
-    };
-
-    supabase.auth.getSession().then(({ data: { session: sess } }) => aplicarSessao(sess));
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((evento, sess) => {
-      if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') {
-        if (sess) setSession(sess);
-        return;
-      }
-      setTimeout(() => aplicarSessao(sess), 0);
-    });
-
-    return () => {
-      ativo = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
+  const { session, userProfile, erroPerfil, loading, logout } = useAuthSession();
 
   if (loading) return <TelaCarregando />;
 
@@ -167,51 +31,43 @@ export default function App() {
     }
   }
 
-  // Rota inicial dependendo da role
-  const home = userProfile?.role === 'super_dev' ? '/admin-dev' : '/dashboard';
+  const eSuperDev = userProfile?.role === 'super_dev';
+  const home = eSuperDev ? ROTA_ADMIN_DEV : ROTA_DASHBOARD;
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={!session ? <LoginPage /> : <Navigate to={home} replace />} 
-        />
-        
-        {/* Rota do Console Super Dev */}
-        <Route 
-          path="/admin-dev" 
-          element={
-            session && userProfile?.role === 'super_dev' ? (
-              <AdminDevPage />
-            ) : (
-              <Navigate to={session ? '/dashboard' : '/login'} replace />
-            )
-          } 
-        />
+      <Suspense fallback={<TelaCarregando />}>
+        <Routes>
+          <Route path={ROTA_LOGIN} element={!session ? <LoginPage /> : <Navigate to={home} replace />} />
 
-        {/* Rota do Painel Principal para Usuários / Funcionários */}
-        <Route 
-          path="/dashboard" 
-          element={
-            session ? (
-              <PainelLayout 
-                userProfile={userProfile} 
-                onLogout={handleLogout}
-                onAbrirConsoleDev={() => window.location.href = '/admin-dev'}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          } 
-        />
+          {/* Console Super Dev */}
+          <Route
+            path={ROTA_ADMIN_DEV}
+            element={
+              session && eSuperDev ? (
+                <AdminDevPage />
+              ) : (
+                <Navigate to={session ? ROTA_DASHBOARD : ROTA_LOGIN} replace />
+              )
+            }
+          />
 
-        {/* Redirecionamento Padrão */}
-        <Route 
-          path="*" 
-          element={<Navigate to={session ? home : '/login'} replace />} 
-        />
-      </Routes>
+          {/* Painel principal para usuários / funcionários */}
+          <Route
+            path={ROTA_DASHBOARD}
+            element={
+              session ? (
+                <AuthenticatedLayout userProfile={userProfile} onLogout={logout} />
+              ) : (
+                <Navigate to={ROTA_LOGIN} replace />
+              )
+            }
+          />
+
+          {/* Redirecionamento padrão */}
+          <Route path="*" element={<Navigate to={session ? home : ROTA_LOGIN} replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
